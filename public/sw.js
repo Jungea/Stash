@@ -1,10 +1,10 @@
 const CACHE_NAME = "stash-v1";
 
-// 설치: 핵심 정적 자산 캐시
+// 설치: 정적 자산만 캐시 (인증 필요 페이지 제외)
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
-      cache.addAll(["/", "/login", "/manifest.json"])
+      cache.addAll(["/manifest.json"])
     )
   );
   self.skipWaiting();
