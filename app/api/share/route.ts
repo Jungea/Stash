@@ -15,15 +15,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/?error=no_url", req.nextUrl.origin));
   }
 
-  const supabase = await createClient();
-  await saveLink(supabase, url);
-
-  const redirectUrl = new URL("/", req.nextUrl.origin);
-  redirectUrl.searchParams.set("saved", "1");
-  return NextResponse.redirect(redirectUrl);
+  // 공유된 URL을 /save 페이지로 넘겨 폴더/이름 선택
+  const saveUrl = new URL("/save", req.nextUrl.origin);
+  saveUrl.searchParams.set("url", url);
+  return NextResponse.redirect(saveUrl);
 }
 
-/** 앱 내 수동 URL 추가 — POST /api/share { url, folderId? } */
+/** 앱 내 수동 URL 추가 — POST /api/share { url, title?, description?, folderId? } */
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const url: string = body.url;
@@ -33,7 +31,12 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = await createClient();
-  const link = await saveLink(supabase, url, body.folderId ?? null);
+  const link = await saveLink(supabase, {
+    url,
+    title: body.title,
+    description: body.description,
+    folderId: body.folderId ?? null,
+  });
 
   if (!link) {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
@@ -42,10 +45,19 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(link, { status: 201 });
 }
 
-async function saveLink(
+export async function saveLink(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  url: string,
-  folderId: string | null = null
+  {
+    url,
+    title,
+    description,
+    folderId = null,
+  }: {
+    url: string;
+    title?: string;
+    description?: string;
+    folderId?: string | null;
+  }
 ) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -57,8 +69,8 @@ async function saveLink(
     .insert({
       user_id: user.id,
       url,
-      title: meta.title,
-      description: meta.description,
+      title: title ?? meta.title,
+      description: description ?? meta.description,
       image: meta.image,
       favicon: meta.favicon,
       folder_id: folderId,

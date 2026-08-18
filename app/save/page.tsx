@@ -1,31 +1,32 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Folder } from "@/types";
 
-type Props = {
-  folders: Folder[];
-  onAdd: (data: {
-    url: string;
-    title?: string;
-    description?: string;
-    folderId?: string;
-  }) => Promise<void>;
-  onClose: () => void;
-  initialUrl?: string;
-};
+function SaveForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialUrl = searchParams.get("url") ?? "";
 
-export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "" }: Props) {
   const [url, setUrl] = useState(initialUrl);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [folderId, setFolderId] = useState("");
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [fetching, setFetching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    fetch("/api/folders")
+      .then((r) => r.json())
+      .then((d) => setFolders(Array.isArray(d) ? d : []));
+
+    if (initialUrl) fetchMeta(initialUrl);
+  }, [initialUrl]);
+
   async function fetchMeta(targetUrl: string) {
-    if (!targetUrl.trim()) return;
     setFetching(true);
     try {
       const res = await fetch(`/api/metadata?url=${encodeURIComponent(targetUrl)}`);
@@ -41,31 +42,33 @@ export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "" 
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!url.trim()) return;
     setError("");
     setLoading(true);
+
     try {
-      await onAdd({
-        url: url.trim(),
-        title: title.trim() || undefined,
-        description: description.trim() || undefined,
-        folderId: folderId || undefined,
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: url.trim(),
+          title: title.trim() || undefined,
+          description: description.trim() || undefined,
+          folderId: folderId || undefined,
+        }),
       });
-      onClose();
+
+      if (!res.ok) throw new Error("저장 실패");
+      router.replace("/?saved=1");
     } catch {
       setError("저장에 실패했습니다.");
-    } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/60"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="w-full sm:max-w-md bg-[#1a1a1a] rounded-t-2xl sm:rounded-2xl p-6 flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-white">링크 추가</h2>
+    <main className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4">
+      <div className="w-full max-w-sm">
+        <h1 className="mb-6 text-xl font-bold text-white">링크 저장</h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {/* URL */}
           <div className="flex gap-2">
@@ -74,8 +77,6 @@ export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "" 
               placeholder="https://..."
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              onBlur={(e) => fetchMeta(e.target.value)}
-              autoFocus
               required
               className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
             />
@@ -83,7 +84,7 @@ export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "" 
               type="button"
               onClick={() => fetchMeta(url)}
               disabled={fetching || !url}
-              className="rounded-xl border border-white/10 px-3 py-3 text-white/50 hover:text-white hover:bg-white/5 text-sm disabled:opacity-30 shrink-0"
+              className="rounded-xl border border-white/10 px-3 text-white/50 hover:text-white hover:bg-white/5 text-sm disabled:opacity-30 shrink-0"
             >
               {fetching ? "..." : "불러오기"}
             </button>
@@ -112,7 +113,7 @@ export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "" 
             <select
               value={folderId}
               onChange={(e) => setFolderId(e.target.value)}
-              className="rounded-xl border border-white/10 bg-[#1a1a1a] px-4 py-3 text-white outline-none focus:border-white/30 text-sm"
+              className="rounded-xl border border-white/10 bg-[#111] px-4 py-3 text-white outline-none focus:border-white/30 text-sm"
             >
               <option value="">폴더 선택 (선택사항)</option>
               {folders.map((f) => (
@@ -128,7 +129,7 @@ export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "" 
           <div className="flex gap-2 pt-1">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => router.replace("/")}
               className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 text-sm hover:bg-white/5"
             >
               취소
@@ -143,6 +144,14 @@ export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "" 
           </div>
         </form>
       </div>
-    </div>
+    </main>
+  );
+}
+
+export default function SavePage() {
+  return (
+    <Suspense>
+      <SaveForm />
+    </Suspense>
   );
 }

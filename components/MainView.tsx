@@ -52,11 +52,16 @@ export default function MainView({ showSavedToast }: Props) {
     init();
   }, [fetchLinks]);
 
-  async function handleAddLink(url: string, folderId?: string) {
+  async function handleAddLink(data: {
+    url: string;
+    title?: string;
+    description?: string;
+    folderId?: string;
+  }) {
     const res = await fetch("/api/share", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, folderId }),
+      body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("저장 실패");
     await fetchLinks();
