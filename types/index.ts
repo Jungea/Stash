@@ -19,6 +19,7 @@ export type Link = {
   created_at: string;
   updated_at: string;
   tags: { tag: Tag }[];
+  folder: { id: string; name: string } | null;
 };
 
 export type Folder = {

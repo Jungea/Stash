@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("links")
-    .select("*, tags:link_tags(tag:tags(id, name))");
+    .select("*, tags:link_tags(tag:tags(id, name)), folder:folders(id, name)");
 
   if (q) {
     query = query.or(

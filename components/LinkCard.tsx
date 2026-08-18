@@ -92,7 +92,12 @@ export default function LinkCard({ link, onToggleFavorite, onToggleRead, onDelet
             {link.is_broken && <span className="text-red-400 mr-1">[깨짐]</span>}
             {title}
           </p>
-          <p className="mt-0.5 text-xs text-white/30 truncate">{domain}</p>
+          <div className="mt-0.5 flex items-center gap-1.5 min-w-0">
+            <p className="text-xs text-white/30 truncate shrink-0">{domain}</p>
+            {link.folder && (
+              <span className="text-xs text-white/25 truncate">· {link.folder.name}</span>
+            )}
+          </div>
         </a>
 
         {/* 태그 */}
