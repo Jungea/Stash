@@ -1,6 +1,10 @@
-const CACHE_NAME = "stash-v1";
+// 배포마다 VERCEL_GIT_COMMIT_SHA가 바뀌므로 캐시 버전 자동 갱신
+const VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ?? "dev";
+const CACHE_NAME = `stash-${VERSION}`;
 
-// 설치: 정적 자산만 캐시 (인증 필요 페이지 제외)
+const SW = `
+const CACHE_NAME = "${CACHE_NAME}";
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
@@ -10,7 +14,6 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-// 활성화: 이전 캐시 정리
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -20,28 +23,35 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch: API는 네트워크 우선, 정적 자산은 캐시 우선
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // API 요청 — 네트워크 우선 (캐시 없음)
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // 정적 자산 — 캐시 우선, 없으면 네트워크 후 캐시 저장
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
       return fetch(request).then((res) => {
-        if (res.ok) {
+        if (res.ok && res.type === "basic") {
           const clone = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
         return res;
-      });
+      }).catch(() => caches.match(request));
     })
   );
 });
+`.trim();
+
+export async function GET() {
+  return new Response(SW, {
+    headers: {
+      "Content-Type": "application/javascript",
+      "Cache-Control": "public, max-age=0, must-revalidate",
+    },
+  });
+}

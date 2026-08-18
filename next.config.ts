@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
     // OG 이미지, 파비콘 등 외부 도메인 이미지 허용
     remotePatterns: [{ protocol: "https", hostname: "**" }, { protocol: "http", hostname: "**" }],
   },
+  async rewrites() {
+    return [{ source: "/sw.js", destination: "/api/sw" }];
+  },
   async headers() {
     return [
       {
