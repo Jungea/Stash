@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Link, Folder, Tag } from "@/types";
 import LinkCard from "./LinkCard";
 import AddLinkModal from "./AddLinkModal";
+import EditLinkModal from "./EditLinkModal";
 import Toast from "./Toast";
 
 const FolderSidebar = dynamic(() => import("./FolderSidebar"), { ssr: false });
@@ -27,6 +28,7 @@ export default function MainView({ showSavedToast }: Props) {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingLink, setEditingLink] = useState<Link | null>(null);
   const [toast, setToast] = useState<string | null>(showSavedToast ? "저장됨 ✓" : null);
 
   const showFolderView = !selectedTagId && !favoriteOnly && !searchQuery;
@@ -100,15 +102,21 @@ export default function MainView({ showSavedToast }: Props) {
     });
   }
 
-  async function handleToggleRead(id: string, value: boolean) {
-    setLinks((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, is_read: value } : l))
-    );
-    await fetch(`/api/links/${id}`, {
+  async function handleEditLink(data: {
+    url: string;
+    title: string | null;
+    description: string | null;
+    folder_id: string | null;
+  }) {
+    if (!editingLink) return;
+    const res = await fetch(`/api/links/${editingLink.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_read: value }),
+      body: JSON.stringify(data),
     });
+    if (!res.ok) throw new Error("수정 실패");
+    await fetchLinks();
+    setToast("수정됨 ✓");
   }
 
   async function handleDelete(id: string) {
@@ -300,8 +308,9 @@ export default function MainView({ showSavedToast }: Props) {
                       <LinkCard
                         link={link}
                         onToggleFavorite={handleToggleFavorite}
-                        onToggleRead={handleToggleRead}
+
                         onDelete={handleDelete}
+                        onEdit={setEditingLink}
                       />
                     </li>
                   ))}
@@ -323,6 +332,16 @@ export default function MainView({ showSavedToast }: Props) {
           onAdd={handleAddLink}
           onClose={() => setShowAddModal(false)}
           initialFolderId={selectedFolderId}
+        />
+      )}
+
+      {/* 수정 모달 */}
+      {editingLink && (
+        <EditLinkModal
+          link={editingLink}
+          folders={folders}
+          onSave={handleEditLink}
+          onClose={() => setEditingLink(null)}
         />
       )}
 

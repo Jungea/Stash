@@ -11,7 +11,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const supabase = await createClient();
 
   const allowedFields = [
-    "title", "memo", "folder_id", "is_favorite", "is_read", "description", "image",
+    "url", "title", "memo", "folder_id", "is_favorite", "is_read", "description", "image",
   ];
   const updates = Object.fromEntries(
     Object.entries(fields).filter(([k]) => allowedFields.includes(k))
