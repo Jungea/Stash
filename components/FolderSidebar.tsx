@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Folder, FolderNode, Tag } from "@/types";
 
 type Props = {
@@ -12,6 +13,9 @@ type Props = {
   onSelectFolder: (id: string | null) => void;
   onSelectTag: (id: string | null) => void;
   onToggleFavorite: () => void;
+  onCreateFolder: (name: string, parentId?: string) => Promise<void>;
+  onRenameFolder: (id: string, name: string) => Promise<void>;
+  onDeleteFolder: (id: string) => Promise<void>;
   onClose?: () => void;
 };
 
@@ -26,36 +30,158 @@ function FolderItem({
   depth,
   selectedId,
   onSelect,
+  onRename,
+  onDelete,
+  onCreateFolder,
 }: {
   node: FolderNode;
   depth: number;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  onRename: (id: string, name: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onCreateFolder: (name: string, parentId?: string) => Promise<void>;
 }) {
   const [open, setOpen] = useState(true);
-  const hasChildren = node.children.length > 0;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(node.name);
+  const [creatingChild, setCreatingChild] = useState(false);
+  const [childName, setChildName] = useState("");
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggered = useRef(false);
+  const hasChildren = node.children.length > 0 || creatingChild;
+
+  function handlePointerDown(e: React.PointerEvent) {
+    longPressTriggered.current = false;
+    const { clientX, clientY } = e;
+    longPressTimer.current = setTimeout(() => {
+      longPressTriggered.current = true;
+      setMenuPos({ top: clientY, left: clientX });
+      setMenuOpen(true);
+    }, 500);
+  }
+
+  function handlePointerUp() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  function handleClick(e: React.MouseEvent) {
+    if (longPressTriggered.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      longPressTriggered.current = false;
+    }
+  }
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleOutside() { setMenuOpen(false); }
+    const timer = setTimeout(() => {
+      document.addEventListener("pointerdown", handleOutside);
+    }, 100);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("pointerdown", handleOutside);
+    };
+  }, [menuOpen]);
+
+async function handleCreateChild() {
+    if (childName.trim()) {
+      setOpen(true);
+      await onCreateFolder(childName.trim(), node.id);
+    }
+    setChildName("");
+    setCreatingChild(false);
+  }
+
+  async function handleRename() {
+    if (editName.trim() && editName.trim() !== node.name) {
+      await onRename(node.id, editName.trim());
+    }
+    setEditing(false);
+  }
 
   return (
     <li>
       <div
-        className={`flex items-center gap-1 rounded-lg px-2 py-1.5 cursor-pointer text-sm transition-colors ${
+        className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 transition-colors select-none ${
           selectedId === node.id
             ? "bg-white/10 text-white"
             : "text-white/60 hover:text-white hover:bg-white/5"
         }`}
         style={{ paddingLeft: `${(depth + 1) * 12}px` }}
-        onClick={() => onSelect(node.id)}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onClick={handleClick}
+        onContextMenu={(e) => e.preventDefault()}
       >
         {hasChildren && (
           <span
-            className="text-xs mr-1 select-none"
-            onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+            className="text-xs select-none shrink-0 cursor-pointer"
+            onClick={() => setOpen(!open)}
           >
             {open ? "▾" : "▸"}
           </span>
         )}
-        <span className="truncate">{node.name}</span>
+
+        {editing ? (
+          <input
+            autoFocus
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onBlur={handleRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleRename();
+              if (e.key === "Escape") { setEditName(node.name); setEditing(false); }
+            }}
+            className="flex-1 bg-transparent text-sm text-white outline-none border-b border-white/30"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span
+            className="flex-1 truncate text-sm cursor-pointer"
+            onClick={() => { if (!longPressTriggered.current) onSelect(node.id); }}
+          >
+            {node.name}
+          </span>
+        )}
+
+        {/* 수정/삭제 메뉴 */}
+        {menuOpen && createPortal(
+            <div
+              style={{ position: "fixed", top: menuPos.top, left: menuPos.left, zIndex: 9999 }}
+              className="w-36 rounded-xl border border-white/10 bg-[#1a1a1a] shadow-xl overflow-hidden text-sm"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => { setCreatingChild(true); setOpen(true); setMenuOpen(false); }}
+                className="w-full text-left px-3 py-2 text-white/70 hover:bg-white/5"
+              >
+                하위 폴더 추가
+              </button>
+              <button
+                onClick={() => { setEditing(true); setMenuOpen(false); }}
+                className="w-full text-left px-3 py-2 text-white/70 hover:bg-white/5"
+              >
+                이름 변경
+              </button>
+              <button
+                onClick={() => { onDelete(node.id); setMenuOpen(false); }}
+                className="w-full text-left px-3 py-2 text-red-400 hover:bg-white/5"
+              >
+                삭제
+              </button>
+            </div>,
+            document.body
+          )}
       </div>
+
       {hasChildren && open && (
         <ul>
           {node.children.map((child) => (
@@ -65,8 +191,27 @@ function FolderItem({
               depth={depth + 1}
               selectedId={selectedId}
               onSelect={onSelect}
+              onRename={onRename}
+              onDelete={onDelete}
+              onCreateFolder={onCreateFolder}
             />
           ))}
+          {creatingChild && (
+            <li style={{ paddingLeft: `${(depth + 2) * 12}px` }} className="pr-2 py-1">
+              <input
+                autoFocus
+                value={childName}
+                onChange={(e) => setChildName(e.target.value)}
+                onBlur={handleCreateChild}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateChild();
+                  if (e.key === "Escape") { setChildName(""); setCreatingChild(false); }
+                }}
+                placeholder="폴더 이름"
+                className="w-full rounded-lg bg-white/5 border border-white/20 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none"
+              />
+            </li>
+          )}
         </ul>
       )}
     </li>
@@ -82,9 +227,21 @@ export default function FolderSidebar({
   onSelectFolder,
   onSelectTag,
   onToggleFavorite,
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
   onClose,
 }: Props) {
   const tree = useMemo(() => buildTree(folders), [folders]);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  async function handleCreate() {
+    if (!newName.trim()) { setCreating(false); return; }
+    await onCreateFolder(newName.trim());
+    setNewName("");
+    setCreating(false);
+  }
 
   function handleSelectFolder(id: string | null) {
     onSelectFolder(id);
@@ -98,7 +255,6 @@ export default function FolderSidebar({
 
   return (
     <nav className="flex flex-col gap-1 py-2 select-none">
-      {/* 전체 */}
       <button
         onClick={() => handleSelectFolder(null)}
         className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-left transition-colors ${
@@ -110,7 +266,6 @@ export default function FolderSidebar({
         전체
       </button>
 
-      {/* 즐겨찾기 */}
       <button
         onClick={() => { onToggleFavorite(); onClose?.(); }}
         className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-left transition-colors ${
@@ -123,21 +278,48 @@ export default function FolderSidebar({
       </button>
 
       {/* 폴더 */}
+      <div className="mt-3 mb-1 px-3 flex items-center justify-between">
+        <p className="text-xs text-white/30 uppercase tracking-wider">폴더</p>
+        <button
+          onClick={() => setCreating(true)}
+          className="text-xs text-white/30 hover:text-white transition-colors"
+        >
+          +
+        </button>
+      </div>
+
+      {creating && (
+        <div className="px-2">
+          <input
+            autoFocus
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onBlur={handleCreate}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleCreate();
+              if (e.key === "Escape") { setNewName(""); setCreating(false); }
+            }}
+            placeholder="폴더 이름"
+            className="w-full rounded-lg bg-white/5 border border-white/20 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none"
+          />
+        </div>
+      )}
+
       {tree.length > 0 && (
-        <>
-          <p className="mt-3 mb-1 px-3 text-xs text-white/30 uppercase tracking-wider">폴더</p>
-          <ul>
-            {tree.map((node) => (
-              <FolderItem
-                key={node.id}
-                node={node}
-                depth={0}
-                selectedId={selectedFolderId}
-                onSelect={handleSelectFolder}
-              />
-            ))}
-          </ul>
-        </>
+        <ul>
+          {tree.map((node) => (
+            <FolderItem
+              key={node.id}
+              node={node}
+              depth={0}
+              selectedId={selectedFolderId}
+              onSelect={handleSelectFolder}
+              onRename={onRenameFolder}
+              onDelete={onDeleteFolder}
+              onCreateFolder={onCreateFolder}
+            />
+          ))}
+        </ul>
       )}
 
       {/* 태그 */}
