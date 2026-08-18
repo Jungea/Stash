@@ -14,7 +14,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { name, parentId } = await req.json();
+  const { name, parentId, color } = await req.json();
 
   if (!name || typeof name !== "string") {
     return NextResponse.json({ error: "name이 필요합니다." }, { status: 400 });
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("folders")
-    .insert({ user_id: user.id, name: name.trim(), parent_id: parentId ?? null })
+    .insert({ user_id: user.id, name: name.trim(), parent_id: parentId ?? null, color: color ?? null })
     .select()
     .single();
 

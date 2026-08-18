@@ -26,6 +26,7 @@ export type Folder = {
   id: string;
   name: string;
   parent_id: string | null;
+  color: string | null;
   created_at: string;
 };
 

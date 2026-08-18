@@ -5,11 +5,12 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const { name, parentId } = await req.json();
+  const { name, parentId, color } = await req.json();
 
   const updates: Record<string, unknown> = {};
   if (name && typeof name === "string") updates.name = name.trim();
   if (parentId !== undefined) updates.parent_id = parentId ?? null;
+  if (color !== undefined) updates.color = color ?? null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "변경할 항목이 없습니다." }, { status: 400 });
