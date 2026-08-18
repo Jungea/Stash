@@ -1,5 +1,5 @@
 {
-  "name": "stash-tmp",
+  "name": "stash",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
+    "cheerio": "^1.2.0",
+    "jose": "^6.2.9",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -20,6 +24,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
+    "jimp": "^1.6.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
