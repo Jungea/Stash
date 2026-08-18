@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import { Star, MoreHorizontal } from "lucide-react";
 import { Link } from "@/types";
 
 type Props = {
@@ -89,21 +90,21 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: P
       <div className="flex flex-col items-center gap-1 shrink-0">
         <button
           onClick={() => onToggleFavorite(link.id, !link.is_favorite)}
-          className={`text-lg leading-none transition-colors ${
+          className={`transition-colors ${
             link.is_favorite ? "text-yellow-400" : "text-white/20 hover:text-white/40"
           }`}
           aria-label="즐겨찾기"
         >
-          ★
+          <Star className="w-4 h-4" fill={link.is_favorite ? "currentColor" : "none"} />
         </button>
 
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="text-white/20 hover:text-white/60 text-lg leading-none px-1"
+            className="text-white/20 hover:text-white/60 p-0.5"
             aria-label="더보기"
           >
-            ⋯
+            <MoreHorizontal className="w-4 h-4" />
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-6 z-20 w-28 rounded-xl border border-white/10 bg-[#1a1a1a] shadow-xl overflow-hidden text-sm">

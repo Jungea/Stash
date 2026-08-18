@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
+import { Menu, ChevronRight, CornerUpLeft, Folder as FolderIcon, Plus } from "lucide-react";
 import { Link, Folder, Tag } from "@/types";
 import LinkCard from "./LinkCard";
 import AddLinkModal from "./AddLinkModal";
+import CustomSelect from "./CustomSelect";
 import EditLinkModal from "./EditLinkModal";
 import Toast from "./Toast";
 
@@ -165,6 +167,15 @@ export default function MainView({ showSavedToast }: Props) {
     await fetchFolders();
   }
 
+  async function handleChangeColor(id: string, color: string | null) {
+    await fetch(`/api/folders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ color }),
+    });
+    await fetchFolders();
+  }
+
   async function handleDeleteFolder(id: string) {
     await fetch(`/api/folders/${id}`, { method: "DELETE" });
     if (selectedFolderId === id) setSelectedFolderId(null);
@@ -201,6 +212,7 @@ export default function MainView({ showSavedToast }: Props) {
             onCreateFolder={handleCreateFolder}
             onRenameFolder={handleRenameFolder}
             onDeleteFolder={handleDeleteFolder}
+            onChangeColor={handleChangeColor}
             onClose={() => setSidebarOpen(false)}
           />
         </div>
@@ -215,7 +227,7 @@ export default function MainView({ showSavedToast }: Props) {
             onClick={() => setSidebarOpen((v) => !v)}
             aria-label="메뉴"
           >
-            ☰
+            <Menu className="w-5 h-5" />
           </button>
           <input
             type="search"
@@ -224,20 +236,21 @@ export default function MainView({ showSavedToast }: Props) {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
           />
-          <select
+          <CustomSelect
             value={sort}
-            onChange={(e) => setSort(e.target.value as typeof sort)}
-            className="rounded-lg bg-white/5 border border-white/10 px-2 py-2 text-sm text-white/60 outline-none hidden sm:block"
-          >
-            <option value="latest">최신순</option>
-            <option value="title">이름순</option>
-            <option value="favorite">즐겨찾기</option>
-          </select>
+            onChange={(v) => setSort(v as typeof sort)}
+            options={[
+              { value: "latest", label: "최신순" },
+              { value: "title", label: "이름순" },
+              { value: "favorite", label: "즐겨찾기" },
+            ]}
+            className="w-28 shrink-0"
+          />
           <button
             onClick={() => setShowAddModal(true)}
             className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-white/90 shrink-0"
           >
-            +
+            <Plus className="w-4 h-4" />
           </button>
         </header>
 
@@ -258,7 +271,7 @@ export default function MainView({ showSavedToast }: Props) {
                   </button>
                   {folderPath.map((f, i) => (
                     <span key={f.id} className="flex items-center gap-1">
-                      <span>›</span>
+                      <ChevronRight className="w-3 h-3" />
                       <button
                         onClick={() => handleSelectFolder(f.id)}
                         className={
@@ -283,7 +296,7 @@ export default function MainView({ showSavedToast }: Props) {
                       onClick={() => handleSelectFolder(folderPath[folderPath.length - 2]?.id ?? null)}
                       className="flex items-center gap-2 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.08] text-left transition-colors"
                     >
-                      <span className="text-base shrink-0">↩</span>
+                      <CornerUpLeft className="w-4 h-4 shrink-0" />
                       <span className="text-sm text-white/50 truncate">..</span>
                     </button>
                   )}
@@ -293,7 +306,7 @@ export default function MainView({ showSavedToast }: Props) {
                       onClick={() => handleSelectFolder(folder.id)}
                       className="flex items-center gap-2 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.08] text-left transition-colors"
                     >
-                      <span className="text-base shrink-0">📁</span>
+                      <FolderIcon className="w-4 h-4 shrink-0" style={{ color: folder.color ?? "#9ca3af" }} />
                       <span className="text-sm text-white truncate">{folder.name}</span>
                     </button>
                   ))}

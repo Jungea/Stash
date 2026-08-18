@@ -2,7 +2,13 @@
 
 import { useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { ChevronDown, ChevronRight, Star, Hash, Plus, Folder as FolderIcon } from "lucide-react";
 import { Folder, FolderNode, Tag } from "@/types";
+
+const FOLDER_COLORS = [
+  "#9ca3af", "#f87171", "#fb923c", "#facc15",
+  "#4ade80", "#60a5fa", "#a78bfa", "#f472b6",
+];
 
 type Props = {
   folders: Folder[];
@@ -16,6 +22,7 @@ type Props = {
   onCreateFolder: (name: string, parentId?: string) => Promise<void>;
   onRenameFolder: (id: string, name: string) => Promise<void>;
   onDeleteFolder: (id: string) => Promise<void>;
+  onChangeColor: (id: string, color: string | null) => Promise<void>;
   onClose?: () => void;
 };
 
@@ -33,6 +40,7 @@ function FolderItem({
   onRename,
   onDelete,
   onCreateFolder,
+  onChangeColor,
 }: {
   node: FolderNode;
   depth: number;
@@ -41,6 +49,7 @@ function FolderItem({
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onCreateFolder: (name: string, parentId?: string) => Promise<void>;
+  onChangeColor: (id: string, color: string | null) => Promise<void>;
 }) {
   const [open, setOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -126,9 +135,14 @@ async function handleCreateChild() {
             className="text-xs select-none shrink-0 cursor-pointer"
             onClick={() => setOpen(!open)}
           >
-            {open ? "▾" : "▸"}
+            {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
           </span>
         )}
+
+        <FolderIcon
+          className="w-3.5 h-3.5 shrink-0"
+          style={{ color: node.color ?? "#9ca3af" }}
+        />
 
         {editing ? (
           <input
@@ -157,7 +171,7 @@ async function handleCreateChild() {
             <div
               style={{ position: "fixed", top: menuPos.top, left: menuPos.left, zIndex: 9999 }}
               className="w-36 rounded-xl border border-white/10 bg-[#1a1a1a] shadow-xl overflow-hidden text-sm"
-              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => { setCreatingChild(true); setOpen(true); setMenuOpen(false); }}
@@ -177,6 +191,20 @@ async function handleCreateChild() {
               >
                 삭제
               </button>
+              <div className="border-t border-white/5 px-3 py-2">
+                <div className="flex gap-1.5 flex-wrap">
+                  {FOLDER_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => { onChangeColor(node.id, node.color === c ? null : c); setMenuOpen(false); }}
+                      style={{ backgroundColor: c }}
+                      className={`w-5 h-5 rounded-full hover:scale-110 transition-transform ${
+                        node.color === c ? "ring-2 ring-white ring-offset-1 ring-offset-[#1a1a1a]" : ""
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>,
             document.body
           )}
@@ -194,6 +222,7 @@ async function handleCreateChild() {
               onRename={onRename}
               onDelete={onDelete}
               onCreateFolder={onCreateFolder}
+              onChangeColor={onChangeColor}
             />
           ))}
           {creatingChild && (
@@ -230,6 +259,7 @@ export default function FolderSidebar({
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
+  onChangeColor,
   onClose,
 }: Props) {
   const tree = useMemo(() => buildTree(folders), [folders]);
@@ -274,7 +304,7 @@ export default function FolderSidebar({
             : "text-white/60 hover:text-white hover:bg-white/5"
         }`}
       >
-        ★ 즐겨찾기
+        <Star className="w-4 h-4" /> 즐겨찾기
       </button>
 
       {/* 폴더 */}
@@ -284,7 +314,7 @@ export default function FolderSidebar({
           onClick={() => setCreating(true)}
           className="text-xs text-white/30 hover:text-white transition-colors"
         >
-          +
+          <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
 
@@ -317,6 +347,7 @@ export default function FolderSidebar({
               onRename={onRenameFolder}
               onDelete={onDeleteFolder}
               onCreateFolder={onCreateFolder}
+              onChangeColor={onChangeColor}
             />
           ))}
         </ul>
@@ -337,7 +368,7 @@ export default function FolderSidebar({
                       : "text-white/60 hover:text-white hover:bg-white/5"
                   }`}
                 >
-                  # {tag.name}
+                  <Hash className="w-3 h-3 shrink-0" /> {tag.name}
                 </button>
               </li>
             ))}

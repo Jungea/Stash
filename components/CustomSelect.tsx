@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 
 type Option = { value: string; label: string };
 
@@ -38,26 +39,25 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
         <span className={selected ? "text-white" : "text-white/30"}>
           {selected ? selected.label : placeholder}
         </span>
-        <svg
-          className={`w-4 h-4 text-white/30 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
+        <ChevronDown className={`w-4 h-4 text-white/30 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-xl border border-white/10 bg-[#1e1e1e] shadow-xl overflow-hidden">
-          <button
-            type="button"
-            onClick={() => { onChange(""); setOpen(false); }}
-            className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 ${
-              value === "" ? "text-white" : "text-white/40"
-            }`}
-          >
-            {placeholder}
-          </button>
-          <div className="border-t border-white/5" />
+          {placeholder && (
+            <>
+              <button
+                type="button"
+                onClick={() => { onChange(""); setOpen(false); }}
+                className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 ${
+                  value === "" ? "text-white" : "text-white/40"
+                }`}
+              >
+                {placeholder}
+              </button>
+              <div className="border-t border-white/5" />
+            </>
+          )}
           {options.map((opt) => (
             <button
               key={opt.value}
