@@ -34,7 +34,12 @@ export async function fetchMetadata(url: string): Promise<LinkMetadata> {
       og("title") ??
       ($("title").first().text().trim() || null);
 
-    const description = og("description") ?? null;
+    const description =
+      og("description") ??
+      $('meta[name="Description"]').attr("content") ??
+      $('meta[property="twitter:description"]').attr("content") ??
+      $('meta[name="twitter:description"]').attr("content") ??
+      null;
     const image = resolveUrl(og("image"), url);
 
     // 파비콘: <link rel="icon"> 계열 우선, 없으면 /favicon.ico
