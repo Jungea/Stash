@@ -259,7 +259,7 @@ export default function MainView({ showSavedToast }: Props) {
           {loading ? (
             <p className="text-center text-white/30 mt-12 text-sm">불러오는 중...</p>
           ) : (
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               {/* 브레드크럼 */}
               {showFolderView && folderPath.length > 0 && (
                 <div className="flex items-center gap-1 mb-3 text-xs text-white/40 flex-wrap">
@@ -315,7 +315,7 @@ export default function MainView({ showSavedToast }: Props) {
 
               {/* 링크 */}
               {links.length > 0 ? (
-                <ul className="flex flex-col gap-2">
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {links.map((link) => (
                     <li key={link.id}>
                       <LinkCard

@@ -22,6 +22,7 @@ function getDomain(url: string) {
 
 export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -100,7 +101,7 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: P
 
         <div ref={menuRef} className="relative">
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={() => { setMenuOpen(!menuOpen); setConfirmDelete(false); }}
             className="text-white/20 hover:text-white/60 p-0.5"
             aria-label="더보기"
           >
@@ -114,12 +115,30 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: P
               >
                 수정
               </button>
-              <button
-                onClick={() => { onDelete(link.id); setMenuOpen(false); }}
-                className="w-full text-left px-4 py-2.5 text-red-400 hover:bg-white/5"
-              >
-                삭제
-              </button>
+              {confirmDelete ? (
+                <div className="px-4 py-2.5 flex items-center gap-2">
+                  <span className="text-white/50 text-xs flex-1">삭제할까요?</span>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="text-xs text-white/40 hover:text-white px-2 py-1 rounded"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={() => { onDelete(link.id); setMenuOpen(false); }}
+                    className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="w-full text-left px-4 py-2.5 text-red-400 hover:bg-white/5"
+                >
+                  삭제
+                </button>
+              )}
             </div>
           )}
         </div>
