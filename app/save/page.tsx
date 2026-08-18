@@ -3,6 +3,7 @@
 import { useState, useEffect, FormEvent, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Folder } from "@/types";
+import CustomSelect from "@/components/CustomSelect";
 
 function SaveForm() {
   const router = useRouter();
@@ -33,7 +34,6 @@ function SaveForm() {
       if (res.ok) {
         const meta = await res.json();
         if (meta.title) setTitle(meta.title);
-        if (meta.description) setDescription(meta.description);
       }
     } finally {
       setFetching(false);
@@ -86,7 +86,16 @@ function SaveForm() {
               disabled={fetching || !url}
               className="rounded-xl border border-white/10 px-3 text-white/50 hover:text-white hover:bg-white/5 text-sm disabled:opacity-30 shrink-0"
             >
-              {fetching ? "..." : "불러오기"}
+              {fetching ? (
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 0 0-9-9 9 9 0 0 0-6.36 2.64L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+              )}
             </button>
           </div>
 
@@ -110,18 +119,12 @@ function SaveForm() {
 
           {/* 폴더 */}
           {folders.length > 0 && (
-            <select
+            <CustomSelect
               value={folderId}
-              onChange={(e) => setFolderId(e.target.value)}
-              className="rounded-xl border border-white/10 bg-[#111] px-4 py-3 text-white outline-none focus:border-white/30 text-sm"
-            >
-              <option value="">폴더 선택 (선택사항)</option>
-              {folders.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
+              onChange={setFolderId}
+              options={folders.map((f) => ({ value: f.id, label: f.name }))}
+              placeholder="폴더 선택 (선택사항)"
+            />
           )}
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
