@@ -164,12 +164,13 @@ export default function MainView({ showSavedToast }: Props) {
     url: string;
     title: string | null;
     description: string | null;
+    folderId: string | null;
   }) {
     if (!editingLink) return;
     const res = await fetch(`/api/links/${editingLink.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, folder_id: data.folderId }),
     });
     if (!res.ok) throw new Error("수정 실패");
     await fetchLinks();
@@ -464,7 +465,7 @@ export default function MainView({ showSavedToast }: Props) {
           folders={folders}
           onAdd={handleAddLink}
           onClose={() => setShowAddModal(false)}
-          initialFolderId={selectedFolderId}
+          initialFolderId={selectedFolderId === "none" ? null : selectedFolderId}
         />
       )}
 
@@ -472,6 +473,7 @@ export default function MainView({ showSavedToast }: Props) {
       {editingLink && (
         <EditLinkModal
           link={editingLink}
+          folders={folders}
           onSave={handleEditLink}
           onClose={() => setEditingLink(null)}
         />

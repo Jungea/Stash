@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 
 type Option = { value: string; label: string };
@@ -15,6 +16,7 @@ type Props = {
 
 export default function CustomSelect({ value, onChange, options, placeholder = "선택", className = "" }: Props) {
   const [open, setOpen] = useState(false);
+  const [dropStyle, setDropStyle] = useState<React.CSSProperties>({});
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,13 +29,26 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
+  function handleOpen() {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropHeight = Math.min((options.length + 1) * 44, 220);
+    if (spaceBelow < dropHeight) {
+      setDropStyle({ position: "fixed", bottom: window.innerHeight - rect.top, left: rect.left, width: rect.width, zIndex: 9999 });
+    } else {
+      setDropStyle({ position: "fixed", top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999 });
+    }
+    setOpen((v) => !v);
+  }
+
   const selected = options.find((o) => o.value === value);
 
   return (
     <div ref={ref} className={`relative ${className}`}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleOpen}
         className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-left transition-colors hover:border-white/20 focus:outline-none"
       >
         <span className={selected ? "text-white" : "text-white/30"}>
@@ -42,8 +57,8 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
         <ChevronDown className={`w-4 h-4 text-white/30 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-white/10 bg-[#1e1e1e] shadow-xl overflow-hidden">
+      {open && createPortal(
+        <div style={dropStyle} className="rounded-xl border border-white/10 bg-[#1e1e1e] shadow-xl overflow-y-auto max-h-56">
           {placeholder && (
             <>
               <button
@@ -71,7 +86,8 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
               {opt.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
