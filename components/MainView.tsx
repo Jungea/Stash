@@ -434,6 +434,7 @@ export default function MainView({ showSavedToast }: Props) {
                       onToggleFavorite={handleToggleFavorite}
                       onDelete={handleDelete}
                       onEdit={setEditingLink}
+                      onCopy={() => setToast("복사됨 ✓")}
                     />
                   </li>
                 ))}
