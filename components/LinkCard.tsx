@@ -27,6 +27,7 @@ function getDomain(url: string) {
 export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onCopy, selectionMode, selected, onSelect }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const title = link.title ?? getDomain(link.url);
@@ -54,16 +55,21 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
         className={`flex gap-3 p-3 rounded-xl border transition-colors cursor-pointer ${selected ? "border-white/40 bg-white/10" : "border-white/10 bg-white/5"}`}
       >
         <div className="shrink-0 mt-0.5 relative">
-          {link.image ? (
+          {link.image && !imageError ? (
             <div className="w-14 h-14 rounded-lg overflow-hidden bg-white/5">
-              <Image src={link.image} alt="" width={56} height={56} className="w-full h-full object-cover" unoptimized />
+              <Image src={link.image} alt="" width={56} height={56} className="w-full h-full object-cover" unoptimized onError={() => setImageError(true)} />
             </div>
           ) : (
-            <div className="w-14 h-14 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
+            <div
+              className="w-14 h-14 rounded-lg flex items-center justify-center overflow-hidden"
+              style={{ backgroundColor: link.folder?.color ? `${link.folder.color}33` : "rgba(255,255,255,0.05)" }}
+            >
               {link.favicon ? (
                 <Image src={link.favicon} alt="" width={20} height={20} unoptimized />
               ) : (
-                <span className="text-white/30 text-xs">{getDomain(link.url)[0]?.toUpperCase()}</span>
+                <span className="text-sm font-medium" style={{ color: link.folder?.color ?? "rgba(255,255,255,0.3)" }}>
+                  {(link.title ?? getDomain(link.url)).slice(0, 2)}
+                </span>
               )}
             </div>
           )}
@@ -80,19 +86,24 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
   }
 
   return (
-    <article className="flex gap-3 p-3 rounded-xl border border-white/10 bg-white/5 transition-colors">
+    <article onClick={handleCopy} className="flex gap-3 p-3 rounded-xl border border-white/10 bg-white/5 transition-colors cursor-pointer">
       {/* 썸네일 or 파비콘 */}
-      <a href={link.url} target="_blank" rel="noopener noreferrer" className="shrink-0 mt-0.5">
-        {link.image ? (
+      <a href={link.url} target="_blank" rel="noopener noreferrer" className="shrink-0 mt-0.5" onClick={(e) => e.stopPropagation()}>
+        {link.image && !imageError ? (
           <div className="w-14 h-14 rounded-lg overflow-hidden bg-white/5">
-            <Image src={link.image} alt="" width={56} height={56} className="w-full h-full object-cover" unoptimized />
+            <Image src={link.image} alt="" width={56} height={56} className="w-full h-full object-cover" unoptimized onError={() => setImageError(true)} />
           </div>
         ) : (
-          <div className="w-14 h-14 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
+          <div
+            className="w-14 h-14 rounded-lg flex items-center justify-center overflow-hidden"
+            style={{ backgroundColor: link.folder?.color ? `${link.folder.color}33` : "rgba(255,255,255,0.05)" }}
+          >
             {link.favicon ? (
               <Image src={link.favicon} alt="" width={20} height={20} unoptimized />
             ) : (
-              <span className="text-white/30 text-xs">{domain[0]?.toUpperCase()}</span>
+              <span className="text-sm font-medium" style={{ color: link.folder?.color ?? "rgba(255,255,255,0.3)" }}>
+                {title.slice(0, 2)}
+              </span>
             )}
           </div>
         )}
@@ -100,21 +111,19 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
 
       {/* 본문 */}
       <div className="flex-1 min-w-0">
-        <button onClick={handleCopy} className="block w-full text-left">
-          <p className="text-sm font-medium leading-snug line-clamp-2 text-white">
-            {link.is_broken && <span className="text-red-400 mr-1">[깨짐]</span>}
-            {title}
-          </p>
-          {link.description && (
-            <p className="mt-0.5 text-xs text-white/40 line-clamp-2 leading-snug">{link.description}</p>
+        <p className="text-sm font-medium leading-snug line-clamp-2 text-white">
+          {link.is_broken && <span className="text-red-400 mr-1">[깨짐]</span>}
+          {title}
+        </p>
+        {link.description && (
+          <p className="mt-0.5 text-xs text-white/40 line-clamp-2 leading-snug">{link.description}</p>
+        )}
+        <div className="mt-0.5 flex flex-col min-w-0">
+          <p className="text-xs text-white/30 truncate">{domain}</p>
+          {link.folder && (
+            <span className="text-xs text-white/25 truncate">{link.folder.name}</span>
           )}
-          <div className="mt-0.5 flex items-center gap-1.5 min-w-0">
-            <p className="text-xs text-white/30 truncate shrink-0">{domain}</p>
-            {link.folder && (
-              <span className="text-xs text-white/25 truncate">· {link.folder.name}</span>
-            )}
-          </div>
-        </button>
+        </div>
 
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
@@ -130,7 +139,7 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
       {/* 우측 버튼 */}
       <div className="flex flex-col items-center gap-3 shrink-0">
         <button
-          onClick={() => onToggleFavorite(link.id, !link.is_favorite)}
+          onClick={(e) => { e.stopPropagation(); onToggleFavorite(link.id, !link.is_favorite); }}
           className={`transition-colors ${
             link.is_favorite ? "text-yellow-400" : "text-white/20 hover:text-white/40"
           }`}
@@ -141,14 +150,14 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
 
         <div ref={menuRef} className="relative">
           <button
-            onClick={() => { setMenuOpen(!menuOpen); setConfirmDelete(false); }}
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); setConfirmDelete(false); }}
             className="text-white/20 hover:text-white/60 p-0.5"
             aria-label="더보기"
           >
             <MoreHorizontal className="w-5 h-5" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-6 z-20 w-28 rounded-xl border border-white/10 bg-[#1a1a1a] shadow-xl overflow-hidden text-sm">
+            <div className="absolute right-0 top-6 z-20 w-28 rounded-xl border border-white/10 bg-[#1a1a1a] shadow-xl overflow-hidden text-sm" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => { onEdit(link); setMenuOpen(false); }}
                 className="w-full text-left px-4 py-2.5 text-white/70 hover:bg-white/5"
