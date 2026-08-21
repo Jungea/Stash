@@ -34,7 +34,11 @@ export default function FoldersPage() {
   const [totalLinks, setTotalLinks] = useState<number | null>(null);
   const [unclassifiedCount, setUnclassifiedCount] = useState<number | null>(null);
 
-  const FOLDER_COLORS = ["#9ca3af","#f87171","#fb923c","#facc15","#4ade80","#60a5fa","#a78bfa","#f472b6"];
+  const FOLDER_COLORS = [
+    "#9ca3af", "#f87171", "#fb923c", "#facc15",
+    "#4ade80", "#34d399", "#60a5fa", "#818cf8",
+    "#a78bfa", "#f472b6", "#e879f9", "#fb7185",
+  ];
 
   useEffect(() => {
     Promise.all([
@@ -501,7 +505,7 @@ export default function FoldersPage() {
               onKeyDown={(e) => e.key === "Enter" && handleAddRootFolder()}
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
             />
-            <div className="flex gap-2 flex-wrap">
+            <div className="grid grid-cols-6 gap-2">
               {FOLDER_COLORS.map((c) => (
                 <button
                   key={c}
@@ -535,7 +539,7 @@ export default function FoldersPage() {
               onKeyDown={(e) => e.key === "Enter" && handleAddSubfolder()}
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
             />
-            <div className="flex gap-2 flex-wrap">
+            <div className="grid grid-cols-6 gap-2">
               {FOLDER_COLORS.map((c) => (
                 <button
                   key={c}
@@ -560,7 +564,7 @@ export default function FoldersPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60" onClick={(e) => e.target === e.currentTarget && setColorModalOpen(false)}>
           <div className="w-full max-w-md bg-[#1a1a1a] rounded-t-2xl p-6 flex flex-col gap-4">
             <h2 className="text-base font-semibold text-white">색상 변경</h2>
-            <div className="flex gap-2 flex-wrap">
+            <div className="grid grid-cols-6 gap-2">
               {FOLDER_COLORS.map((c) => (
                 <button
                   key={c}

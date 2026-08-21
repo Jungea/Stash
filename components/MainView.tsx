@@ -57,7 +57,11 @@ export default function MainView({ showSavedToast }: Props) {
   const [newFolderColor, setNewFolderColor] = useState("#9ca3af");
   const [addingFolder, setAddingFolder] = useState(false);
 
-  const FOLDER_COLORS = ["#9ca3af","#f87171","#fb923c","#facc15","#4ade80","#60a5fa","#a78bfa","#f472b6"];
+  const FOLDER_COLORS = [
+    "#9ca3af", "#f87171", "#fb923c", "#facc15",
+    "#4ade80", "#34d399", "#60a5fa", "#818cf8",
+    "#a78bfa", "#f472b6", "#e879f9", "#fb7185",
+  ];
 
   const showFolderView = !selectedTagId && !favoriteOnly && !searchQuery;
 
@@ -566,7 +570,7 @@ export default function MainView({ showSavedToast }: Props) {
               }}
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
             />
-            <div className="flex gap-2 flex-wrap">
+            <div className="grid grid-cols-6 gap-2">
               {FOLDER_COLORS.map((c) => (
                 <button
                   key={c}

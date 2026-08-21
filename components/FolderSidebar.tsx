@@ -2,12 +2,13 @@
 
 import { useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronRight, Star, Hash, Plus, Folder as FolderIcon, FolderX } from "lucide-react";
+import { ChevronRight, Star, Hash, Plus, Folder as FolderIcon, FolderOpen, FolderX } from "lucide-react";
 import { Folder, FolderNode, Tag } from "@/types";
 
 const FOLDER_COLORS = [
   "#9ca3af", "#f87171", "#fb923c", "#facc15",
-  "#4ade80", "#60a5fa", "#a78bfa", "#f472b6",
+  "#4ade80", "#34d399", "#60a5fa", "#818cf8",
+  "#a78bfa", "#f472b6", "#e879f9", "#fb7185",
 ];
 
 type Props = {
@@ -58,6 +59,8 @@ function FolderItem({
   const [editName, setEditName] = useState(node.name);
   const [creatingChild, setCreatingChild] = useState(false);
   const [childName, setChildName] = useState("");
+  const [colorModalOpen, setColorModalOpen] = useState(false);
+  const [pendingColor, setPendingColor] = useState(node.color ?? "#9ca3af");
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
   const hasChildren = node.children.length > 0 || creatingChild;
@@ -115,56 +118,59 @@ async function handleCreateChild() {
     setEditing(false);
   }
 
+  const Icon = hasChildren && open ? FolderOpen : FolderIcon;
+
   return (
     <li>
       <div
-        className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 transition-colors select-none ${
-          selectedId === node.id
-            ? "bg-white/10 text-white"
-            : "text-white/60 hover:text-white hover:bg-white/5"
+        className={`flex items-center gap-2 px-1 py-2 select-none transition-colors ${
+          selectedId === node.id ? "bg-white/5" : "hover:bg-white/5"
         }`}
-        style={{ paddingLeft: `${(depth + 1) * 12}px` }}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onClick={handleClick}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {hasChildren && (
-          <span
-            className="text-xs select-none shrink-0 cursor-pointer"
-            onClick={() => setOpen(!open)}
+        <div className="flex items-center gap-2 flex-1 min-w-0" style={{ paddingLeft: depth * 24 }}>
+          <button
+            className={`p-1 shrink-0 ${hasChildren ? "text-white/20 hover:text-white/50" : "text-transparent cursor-default"}`}
+            onClick={(e) => { e.stopPropagation(); if (hasChildren) setOpen(!open); }}
           >
-            {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-          </span>
-        )}
+            <ChevronRight className={`w-4 h-4 transition-transform ${open && hasChildren ? "rotate-90" : ""}`} />
+          </button>
 
-        <FolderIcon
-          className="w-3.5 h-3.5 shrink-0"
-          style={{ color: node.color ?? "#9ca3af" }}
-        />
-
-        {editing ? (
-          <input
-            autoFocus
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onBlur={handleRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleRename();
-              if (e.key === "Escape") { setEditName(node.name); setEditing(false); }
-            }}
-            className="flex-1 bg-transparent text-sm text-white outline-none border-b border-white/30"
-            onClick={(e) => e.stopPropagation()}
+          <Icon
+            className="w-5 h-5 shrink-0"
+            style={{ color: node.color ?? "#9ca3af" }}
           />
-        ) : (
-          <span
-            className="flex-1 truncate text-sm cursor-pointer"
-            onClick={() => { if (!longPressTriggered.current) onSelect(node.id); }}
-          >
-            {node.name}
-          </span>
-        )}
+
+          {editing ? (
+            <input
+              autoFocus
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onBlur={handleRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRename();
+                if (e.key === "Escape") { setEditName(node.name); setEditing(false); }
+              }}
+              className="flex-1 bg-transparent text-sm text-white outline-none border-b border-white/30"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span
+              className={`flex-1 truncate text-sm cursor-pointer ${
+                selectedId === node.id ? "text-white" : depth === 0 ? "text-white/80" : depth === 1 ? "text-white/60" : "text-white/40"
+              }`}
+              onClick={() => { if (!longPressTriggered.current) onSelect(node.id); }}
+            >
+              {node.name}
+            </span>
+          )}
+
+          <span className="text-xs text-white/30 shrink-0">{node.links?.[0]?.count ?? 0}</span>
+        </div>
 
         {/* 수정/삭제 메뉴 */}
         {menuOpen && createPortal(
@@ -191,23 +197,44 @@ async function handleCreateChild() {
               >
                 삭제
               </button>
-              <div className="border-t border-white/5 px-3 py-2">
-                <div className="flex gap-1.5 flex-wrap">
-                  {FOLDER_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => { onChangeColor(node.id, node.color === c ? null : c); setMenuOpen(false); }}
-                      style={{ backgroundColor: c }}
-                      className={`w-5 h-5 rounded-full hover:scale-110 transition-transform ${
-                        node.color === c ? "ring-2 ring-white ring-offset-1 ring-offset-[#1a1a1a]" : ""
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
+              <button
+                onClick={() => { setPendingColor(node.color ?? "#9ca3af"); setColorModalOpen(true); setMenuOpen(false); }}
+                className="w-full text-left px-3 py-2 text-white/70 hover:bg-white/5"
+              >
+                색상 변경
+              </button>
             </div>,
             document.body
           )}
+
+        {/* 색상 변경 모달 */}
+        {colorModalOpen && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60" onClick={(e) => e.target === e.currentTarget && setColorModalOpen(false)}>
+            <div className="w-full max-w-md bg-[#1a1a1a] rounded-t-2xl p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-base font-semibold text-white">색상 변경</h2>
+              <div className="grid grid-cols-6 gap-2">
+                {FOLDER_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setPendingColor(c)}
+                    style={{ backgroundColor: c }}
+                    className={`w-8 h-8 rounded-full border-2 transition-all ${pendingColor === c ? "border-white scale-110" : "border-transparent"}`}
+                  />
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setColorModalOpen(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 text-sm hover:bg-white/5">취소</button>
+                <button
+                  onClick={() => { onChangeColor(node.id, pendingColor); setColorModalOpen(false); }}
+                  className="flex-1 py-3 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90"
+                >
+                  변경
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
       </div>
 
       {hasChildren && open && (
