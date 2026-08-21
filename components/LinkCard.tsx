@@ -64,13 +64,9 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
               className="w-14 h-14 rounded-lg flex items-center justify-center overflow-hidden"
               style={{ backgroundColor: link.folder?.color ? `${link.folder.color}33` : "rgba(255,255,255,0.05)" }}
             >
-              {link.favicon ? (
-                <Image src={link.favicon} alt="" width={20} height={20} unoptimized />
-              ) : (
-                <span className="text-sm font-medium" style={{ color: link.folder?.color ?? "rgba(255,255,255,0.3)" }}>
-                  {(link.title ?? getDomain(link.url)).slice(0, 2)}
-                </span>
-              )}
+              <span className="text-sm font-medium" style={{ color: link.folder?.color ?? "rgba(255,255,255,0.3)" }}>
+                {(link.title ?? getDomain(link.url)).slice(0, 2)}
+              </span>
             </div>
           )}
           <div className={`absolute top-1 left-1 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? "bg-white border-white" : "border-white/60 bg-black/40"}`}>
@@ -98,13 +94,9 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
             className="w-14 h-14 rounded-lg flex items-center justify-center overflow-hidden"
             style={{ backgroundColor: link.folder?.color ? `${link.folder.color}33` : "rgba(255,255,255,0.05)" }}
           >
-            {link.favicon ? (
-              <Image src={link.favicon} alt="" width={20} height={20} unoptimized />
-            ) : (
-              <span className="text-sm font-medium" style={{ color: link.folder?.color ?? "rgba(255,255,255,0.3)" }}>
-                {title.slice(0, 2)}
-              </span>
-            )}
+            <span className="text-sm font-medium" style={{ color: link.folder?.color ?? "rgba(255,255,255,0.3)" }}>
+              {title.slice(0, 2)}
+            </span>
           </div>
         )}
       </a>
