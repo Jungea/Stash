@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Menu, ChevronRight, CornerUpLeft, Folder as FolderIcon, Plus, Search, ArrowLeft, X, MoreHorizontal } from "lucide-react";
+import { Menu, ChevronRight, CornerUpLeft, Folder as FolderIcon, FolderOpen, FolderInput, Folders, Plus, Search, ArrowLeft, X, MoreHorizontal, Trash2 } from "lucide-react";
 import { Link, Folder, Tag } from "@/types";
 import LinkCard from "./LinkCard";
 import AddLinkModal from "./AddLinkModal";
@@ -27,9 +27,18 @@ export default function MainView({ showSavedToast }: Props) {
   const [unclassifiedCount, setUnclassifiedCount] = useState<number>(0);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
-  const [favoriteOnly, setFavoriteOnly] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("stash_folderId") ?? null;
+  });
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("stash_tagId") ?? null;
+  });
+  const [favoriteOnly, setFavoriteOnly] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("stash_favoriteOnly") === "true";
+  });
   const [sort, setSort] = useState<"latest" | "title">("latest");
   const [pinFavorites, setPinFavorites] = useState(false);
 
@@ -40,6 +49,9 @@ export default function MainView({ showSavedToast }: Props) {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [sortModalOpen, setSortModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(showSavedToast ? "저장됨 ✓" : null);
+  const [linkSelectionMode, setLinkSelectionMode] = useState(false);
+  const [selectedLinkIds, setSelectedLinkIds] = useState<Set<string>>(new Set());
+  const [moveFolderOpen, setMoveFolderOpen] = useState(false);
   const [addFolderOpen, setAddFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderColor, setNewFolderColor] = useState("#9ca3af");
@@ -65,6 +77,20 @@ export default function MainView({ showSavedToast }: Props) {
     }
     return path;
   }, [folders, selectedFolderId]);
+
+  useEffect(() => {
+    if (selectedFolderId !== null) localStorage.setItem("stash_folderId", selectedFolderId);
+    else localStorage.removeItem("stash_folderId");
+  }, [selectedFolderId]);
+
+  useEffect(() => {
+    if (selectedTagId !== null) localStorage.setItem("stash_tagId", selectedTagId);
+    else localStorage.removeItem("stash_tagId");
+  }, [selectedTagId]);
+
+  useEffect(() => {
+    localStorage.setItem("stash_favoriteOnly", String(favoriteOnly));
+  }, [favoriteOnly]);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -249,6 +275,13 @@ export default function MainView({ showSavedToast }: Props) {
       <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
         {/* 헤더 */}
         <header className="flex items-center gap-2 px-3 py-3 shrink-0">
+          {linkSelectionMode ? (
+            <>
+              <span className="text-sm text-white/60 flex-1">{selectedLinkIds.size}개 선택됨</span>
+              <button onClick={() => { setLinkSelectionMode(false); setSelectedLinkIds(new Set()); }} className="text-sm text-white/60 hover:text-white p-2">취소</button>
+            </>
+          ) : (
+          <>
           <button
             className="p-2 text-white/60 hover:text-white"
             onClick={() => setSidebarOpen((v) => !v)}
@@ -277,6 +310,12 @@ export default function MainView({ showSavedToast }: Props) {
                 <div className="fixed inset-0 z-30" onClick={() => setSortMenuOpen(false)} />
                 <div className="absolute right-0 top-10 z-40 w-36 rounded-xl border border-white/10 bg-[#1e1e1e] shadow-xl overflow-hidden text-sm">
                   <button
+                    onClick={() => { setLinkSelectionMode(true); setSortMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-white/70 hover:bg-white/5 transition-colors"
+                  >
+                    선택
+                  </button>
+                  <button
                     onClick={() => { setSortModalOpen(true); setSortMenuOpen(false); }}
                     className="w-full text-left px-4 py-2.5 text-white/70 hover:bg-white/5 transition-colors"
                   >
@@ -300,6 +339,8 @@ export default function MainView({ showSavedToast }: Props) {
               </>
             )}
           </div>
+          </>
+          )}
         </header>
 
         {/* 브레드크럼 (고정) */}
@@ -396,6 +437,9 @@ export default function MainView({ showSavedToast }: Props) {
                         onDelete={handleDelete}
                         onEdit={setEditingLink}
                         onCopy={() => setToast("복사됨 ✓")}
+                        selectionMode={linkSelectionMode}
+                        selected={selectedLinkIds.has(link.id)}
+                        onSelect={(id) => setSelectedLinkIds((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; })}
                       />
                     </li>
                   ))}
@@ -560,6 +604,125 @@ export default function MainView({ showSavedToast }: Props) {
       >
         <Plus className="w-6 h-6" />
       </button>
+
+      {/* 링크 선택 모드 플로팅 액션바 */}
+      {linkSelectionMode && selectedLinkIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-[#1e1e1e] border border-white/10 rounded-full px-2 py-2 shadow-xl">
+          <button
+            onClick={() => setMoveFolderOpen(true)}
+            className="p-3 rounded-xl hover:bg-white/5 text-white/60 hover:text-white transition-colors"
+          >
+            <FolderInput className="w-5 h-5" />
+          </button>
+          <button
+            onClick={async () => {
+              await Promise.all([...selectedLinkIds].map((id) => fetch(`/api/links/${id}`, { method: "DELETE" })));
+              setLinks((prev) => prev.filter((l) => !selectedLinkIds.has(l.id)));
+              setSelectedLinkIds(new Set());
+              setLinkSelectionMode(false);
+            }}
+            className="p-3 rounded-xl hover:bg-white/5 text-red-400 hover:text-red-300 transition-colors"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
+      {/* 폴더 이동 모달 */}
+      {moveFolderOpen && (() => {
+        const MoveFolderModal = () => {
+          const [collapsed, setCollapsed] = useState<Set<string>>(new Set(
+            folders.filter((f) => f.parent_id !== null).map((f) => f.parent_id!)
+          ));
+          const [pendingMove, setPendingMove] = useState<{ folderId: string | null; folderName: string } | null>(null);
+          const childOf = (parentId: string | null) => folders.filter((f) => f.parent_id === parentId);
+
+          async function moveLinks(folderId: string | null) {
+            await Promise.all([...selectedLinkIds].map((id) =>
+              fetch(`/api/links/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folder_id: folderId }) })
+            ));
+            await fetchLinks();
+            setMoveFolderOpen(false);
+            setSelectedLinkIds(new Set());
+            setLinkSelectionMode(false);
+            setToast("이동됨 ✓");
+          }
+
+          function renderRow(folder: Folder, depth: number, indent: number) {
+            const hasChildren = childOf(folder.id).length > 0;
+            const isOpen = !collapsed.has(folder.id);
+            const Icon = hasChildren && isOpen ? FolderOpen : FolderIcon;
+            return (
+              <div key={folder.id} className="flex items-center gap-2 px-1 py-3 border-b border-white/10 hover:bg-white/5 cursor-pointer" onClick={() => setPendingMove({ folderId: folder.id, folderName: folder.name })}>
+                <div className="flex items-center gap-2 flex-1 min-w-0" style={{ paddingLeft: indent }}>
+                  <button className={`p-1 shrink-0 ${hasChildren ? "text-white/20 hover:text-white/50" : "text-transparent cursor-default"}`}
+                    onClick={(e) => { e.stopPropagation(); if (hasChildren) setCollapsed((prev) => { const next = new Set(prev); next.has(folder.id) ? next.delete(folder.id) : next.add(folder.id); return next; }); }}>
+                    <ChevronRight className={`w-4 h-4 transition-transform ${isOpen && hasChildren ? "rotate-90" : ""}`} />
+                  </button>
+                  <Icon className="w-5 h-5 shrink-0" style={{ color: folder.color ?? "#9ca3af" }} />
+                  <span className={`flex-1 text-sm truncate ${depth === 0 ? "text-white" : depth === 1 ? "text-white/70" : "text-white/50"}`}>{folder.name}</span>
+                  <span className="text-xs text-white/30">{folder.links?.[0]?.count ?? 0}</span>
+                </div>
+              </div>
+            );
+          }
+
+          function renderTree(folder: Folder, depth: number, indent: number = 0): React.ReactNode {
+            const isOpen = !collapsed.has(folder.id);
+            const childIndent = depth < 3 ? indent + 24 : indent;
+            return (
+              <div key={folder.id}>
+                {renderRow(folder, depth, indent)}
+                {isOpen && childOf(folder.id).map((child) => renderTree(child, depth + 1, childIndent))}
+              </div>
+            );
+          }
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60" onClick={(e) => e.target === e.currentTarget && setMoveFolderOpen(false)}>
+              <div className="w-full max-w-md bg-[#1a1a1a] rounded-t-2xl flex flex-col max-h-dvh">
+                <div className="px-4 pt-5 pb-3 shrink-0 border-b border-white/5">
+                  <h2 className="text-base font-semibold text-white">폴더로 이동</h2>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto px-4">
+                  {/* 전체 */}
+                  <div className="flex items-center gap-2 px-1 py-3 border-b border-white/10 hover:bg-white/5 cursor-pointer" onClick={() => setPendingMove({ folderId: null, folderName: "전체" })}>
+                    <Folders className="w-5 h-5 shrink-0 text-white" />
+                    <span className="flex-1 text-sm text-white">전체</span>
+                  </div>
+                  {/* 미분류 */}
+                  <div className="flex items-center gap-2 px-1 py-3 border-b border-white/10 hover:bg-white/5 cursor-pointer" onClick={() => setPendingMove({ folderId: null, folderName: "미분류" })}>
+                    <div className="flex items-center gap-2 flex-1 min-w-0" style={{ paddingLeft: 0 }}>
+                      <span className="w-6 h-6 shrink-0" />
+                      <FolderIcon className="w-5 h-5 shrink-0 text-white/40" />
+                      <span className="flex-1 text-sm text-white/60">미분류</span>
+                    </div>
+                  </div>
+                  {/* 폴더 트리 */}
+                  {folders.filter((f) => f.parent_id === null).map((f) => renderTree(f, 0, 0))}
+                </div>
+                <div className="shrink-0 h-6" />
+              </div>
+
+              {/* 이동 확인 바텀시트 */}
+              {pendingMove && (
+                <div className="absolute inset-0 flex items-end justify-center bg-black/40" onClick={(e) => e.target === e.currentTarget && setPendingMove(null)}>
+                  <div className="w-full max-w-md bg-[#1a1a1a] rounded-t-2xl p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+                    <p className="text-sm text-white/60">
+                      <span className="text-white font-medium">{pendingMove.folderName}</span>으로 {selectedLinkIds.size}개 이동하시겠습니까?
+                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setPendingMove(null)} className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 text-sm hover:bg-white/5">취소</button>
+                      <button onClick={() => moveLinks(pendingMove.folderId)} className="flex-1 py-3 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90">이동</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        };
+        return <MoveFolderModal />;
+      })()}
 
       {/* 토스트 */}
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { Star, MoreHorizontal } from "lucide-react";
+import { Star, MoreHorizontal, Check } from "lucide-react";
 import { Link } from "@/types";
 
 type Props = {
@@ -11,6 +11,9 @@ type Props = {
   onDelete: (id: string) => void;
   onEdit: (link: Link) => void;
   onCopy: () => void;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
 };
 
 function getDomain(url: string) {
@@ -21,10 +24,14 @@ function getDomain(url: string) {
   }
 }
 
-export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onCopy }: Props) {
+export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onCopy, selectionMode, selected, onSelect }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const title = link.title ?? getDomain(link.url);
+  const domain = getDomain(link.url);
+  const tags = link.tags.map((t) => t.tag);
 
   function handleCopy() {
     navigator.clipboard.writeText(link.url).then(() => onCopy());
@@ -40,9 +47,37 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
 
-  const title = link.title ?? getDomain(link.url);
-  const domain = getDomain(link.url);
-  const tags = link.tags.map((t) => t.tag);
+  if (selectionMode) {
+    return (
+      <article
+        onClick={() => onSelect?.(link.id)}
+        className={`flex gap-3 p-3 rounded-xl border transition-colors cursor-pointer ${selected ? "border-white/40 bg-white/10" : "border-white/10 bg-white/5"}`}
+      >
+        <div className="shrink-0 mt-0.5 relative">
+          {link.image ? (
+            <div className="w-14 h-14 rounded-lg overflow-hidden bg-white/5">
+              <Image src={link.image} alt="" width={56} height={56} className="w-full h-full object-cover" unoptimized />
+            </div>
+          ) : (
+            <div className="w-14 h-14 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
+              {link.favicon ? (
+                <Image src={link.favicon} alt="" width={20} height={20} unoptimized />
+              ) : (
+                <span className="text-white/30 text-xs">{getDomain(link.url)[0]?.toUpperCase()}</span>
+              )}
+            </div>
+          )}
+          <div className={`absolute top-1 left-1 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? "bg-white border-white" : "border-white/60 bg-black/40"}`}>
+            {selected && <Check className="w-2.5 h-2.5 text-black" />}
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium leading-snug line-clamp-2 text-white">{link.title ?? getDomain(link.url)}</p>
+          <p className="text-xs text-white/30 truncate mt-0.5">{getDomain(link.url)}</p>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article className="flex gap-3 p-3 rounded-xl border border-white/10 bg-white/5 transition-colors">
@@ -120,34 +155,29 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
               >
                 수정
               </button>
-              {confirmDelete ? (
-                <div className="px-4 py-2.5 flex items-center gap-2">
-                  <span className="text-white/50 text-xs flex-1">삭제할까요?</span>
-                  <button
-                    onClick={() => setConfirmDelete(false)}
-                    className="text-xs text-white/40 hover:text-white px-2 py-1 rounded"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={() => { onDelete(link.id); setMenuOpen(false); }}
-                    className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded"
-                  >
-                    삭제
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="w-full text-left px-4 py-2.5 text-red-400 hover:bg-white/5"
-                >
-                  삭제
-                </button>
-              )}
+              <button
+                onClick={() => { setConfirmDelete(true); setMenuOpen(false); }}
+                className="w-full text-left px-4 py-2.5 text-red-400 hover:bg-white/5"
+              >
+                삭제
+              </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* 삭제 확인 모달 */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60" onClick={() => setConfirmDelete(false)}>
+          <div className="w-full max-w-md bg-[#1a1a1a] rounded-t-2xl p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm text-white/60">이 링크를 삭제할까요?</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 text-sm hover:bg-white/5">취소</button>
+              <button onClick={() => { onDelete(link.id); setConfirmDelete(false); }} className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-400">삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
