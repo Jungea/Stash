@@ -61,6 +61,7 @@ function FolderItem({
   const [childName, setChildName] = useState("");
   const [colorModalOpen, setColorModalOpen] = useState(false);
   const [pendingColor, setPendingColor] = useState(node.color ?? "#9ca3af");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
   const hasChildren = node.children.length > 0 || creatingChild;
@@ -192,7 +193,7 @@ async function handleCreateChild() {
                 이름 변경
               </button>
               <button
-                onClick={() => { onDelete(node.id); setMenuOpen(false); }}
+                onClick={() => { setDeleteConfirmOpen(true); setMenuOpen(false); }}
                 className="w-full text-left px-3 py-2 text-red-400 hover:bg-white/5"
               >
                 삭제
@@ -208,6 +209,19 @@ async function handleCreateChild() {
           )}
 
         {/* 색상 변경 모달 */}
+        {deleteConfirmOpen && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60" onClick={(e) => e.target === e.currentTarget && setDeleteConfirmOpen(false)}>
+            <div className="w-full max-w-md bg-[#1a1a1a] rounded-t-2xl p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+              <p className="text-sm text-white/60"><span className="text-white font-medium">{node.name}</span> 폴더를 삭제할까요?</p>
+              <div className="flex gap-2">
+                <button onClick={() => setDeleteConfirmOpen(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 text-sm hover:bg-white/5">취소</button>
+                <button onClick={() => { onDelete(node.id); setDeleteConfirmOpen(false); }} className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-400">삭제</button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
         {colorModalOpen && createPortal(
           <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60" onClick={(e) => e.target === e.currentTarget && setColorModalOpen(false)}>
             <div className="w-full max-w-md bg-[#1a1a1a] rounded-t-2xl p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
