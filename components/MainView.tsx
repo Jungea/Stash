@@ -312,7 +312,7 @@ export default function MainView({ showSavedToast }: Props) {
 
               {/* 하위 폴더 카드 */}
               {showFolderView && (selectedFolderId || currentLevelFolders.length > 0) && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-4">
                   {/* 상위 폴더로 이동 */}
                   {selectedFolderId && (
                     <button
@@ -327,10 +327,25 @@ export default function MainView({ showSavedToast }: Props) {
                     <button
                       key={folder.id}
                       onClick={() => handleSelectFolder(folder.id)}
-                      className="flex items-center gap-2 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.08] text-left transition-colors"
+                      className="aspect-square relative rounded-xl border overflow-hidden transition-colors"
+                      style={{
+                        backgroundColor: `${folder.color ?? "#9ca3af"}18`,
+                        borderColor: `${folder.color ?? "#9ca3af"}40`,
+                      }}
                     >
-                      <FolderIcon className="w-4 h-4 shrink-0" style={{ color: folder.color ?? "#9ca3af" }} />
-                      <span className="text-sm text-white truncate">{folder.name}</span>
+                      {/* 배경 아이콘 */}
+                      <FolderIcon
+                        className="absolute -bottom-3 -right-3 w-4/5 h-4/5 opacity-30"
+                        fill="currentColor"
+                        style={{ color: folder.color ?? "#9ca3af" }}
+                      />
+                      {/* 하단 오버레이 */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      {/* 텍스트 */}
+                      <div className="absolute bottom-0 left-0 right-0 p-2 flex items-end justify-between gap-1">
+                        <span className="text-xs text-white truncate">{folder.name}</span>
+                        <span className="text-xs text-white/40 shrink-0">{folder.links?.[0]?.count ?? 0}</span>
+                      </div>
                     </button>
                   ))}
                 </div>

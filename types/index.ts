@@ -28,6 +28,7 @@ export type Folder = {
   parent_id: string | null;
   color: string | null;
   created_at: string;
+  links?: [{ count: number }];
 };
 
 export type FolderNode = Folder & { children: FolderNode[] };
