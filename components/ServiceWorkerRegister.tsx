@@ -9,6 +9,10 @@ export default function ServiceWorkerRegister() {
       navigator.serviceWorker
         .register("/sw.js")
         .catch((err) => console.error("[SW] 등록 실패:", err));
+
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        window.location.reload();
+      });
     }
   }, []);
 
