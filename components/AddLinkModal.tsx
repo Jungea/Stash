@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Folder } from "@/types";
 import CustomSelect from "./CustomSelect";
 
@@ -21,25 +21,9 @@ type Props = {
 export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "", initialFolderId }: Props) {
   const [url, setUrl] = useState(initialUrl);
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [folderId, setFolderId] = useState(initialFolderId ?? "");
-  const [fetching, setFetching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  async function fetchMeta(targetUrl: string) {
-    if (!targetUrl.trim()) return;
-    setFetching(true);
-    try {
-      const res = await fetch(`/api/metadata?url=${encodeURIComponent(targetUrl)}`);
-      if (res.ok) {
-        const meta = await res.json();
-        if (meta.title) setTitle(meta.title);
-      }
-    } finally {
-      setFetching(false);
-    }
-  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -50,7 +34,6 @@ export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "",
       await onAdd({
         url: url.trim(),
         title: title.trim() || undefined,
-        description: description.trim() || undefined,
         folderId: folderId || undefined,
       });
       onClose();
@@ -70,26 +53,15 @@ export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "",
         <h2 className="text-lg font-semibold text-white">링크 추가</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {/* URL */}
-          <div className="flex gap-2">
-            <input
-              type="url"
-              placeholder="https://..."
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onBlur={(e) => fetchMeta(e.target.value)}
-              autoFocus
-              required
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => fetchMeta(url)}
-              disabled={fetching || !url}
-              className="rounded-xl border border-white/10 px-3 py-3 text-white/50 hover:text-white hover:bg-white/5 text-sm disabled:opacity-30 shrink-0"
-            >
-              {fetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            </button>
-          </div>
+          <input
+            type="url"
+            placeholder="https://..."
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            autoFocus
+            required
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
+          />
 
           {/* 이름 */}
           <input
@@ -98,15 +70,6 @@ export default function AddLinkModal({ folders, onAdd, onClose, initialUrl = "",
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
-          />
-
-          {/* 설명 */}
-          <textarea
-            placeholder="설명 (자동 완성)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm resize-none"
           />
 
           {/* 폴더 */}
