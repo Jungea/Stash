@@ -32,6 +32,14 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const { id } = await params;
 
   const supabase = await createClient();
+
+  // 폴더의 링크들을 미분류(folder_id = null)로 이동
+  const { error: unlinkError } = await supabase
+    .from("links")
+    .update({ folder_id: null })
+    .eq("folder_id", id);
+  if (unlinkError) return NextResponse.json({ error: unlinkError.message }, { status: 500 });
+
   const { error } = await supabase.from("folders").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
