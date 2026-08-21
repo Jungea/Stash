@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Folder as FolderIcon, FolderOpen, Folders, ChevronsUpDown, Check, Plus, Palette, Pencil, Trash2 } from "lucide-react";
@@ -14,6 +14,7 @@ export default function FoldersPage() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const dragInfo = useRef<DragInfo | null>(null);
+  const rowRectsRef = useRef<{ id: string; rect: DOMRect; isRoot: boolean }[]>([]);
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
   const [dropPos, setDropPos] = useState<DropPos | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -51,38 +52,63 @@ export default function FoldersPage() {
     }).finally(() => setLoading(false));
   }, []);
 
+  const ROW_HEIGHT = 44;
+
   const rootFolders = folders.filter((f) => f.parent_id === null);
   const childFolders = (parentId: string) => folders.filter((f) => f.parent_id === parentId);
+
+  const visibleOrder = useMemo(() => {
+    const result: string[] = [];
+    function traverse(folder: Folder) {
+      result.push(folder.id);
+      if (!collapsed.has(folder.id)) {
+        folders.filter((f) => f.parent_id === folder.id).forEach(traverse);
+      }
+    }
+    folders.filter((f) => f.parent_id === null).forEach(traverse);
+    return result;
+  }, [folders, collapsed]);
 
   function handlePointerDown(e: React.PointerEvent, folder: Folder) {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     dragInfo.current = { id: folder.id, parentId: folder.parent_id, name: folder.name };
     setGhostPos({ x: e.clientX, y: e.clientY });
+
+    // 드래그 시작 시 모든 행의 원본 위치 스냅샷
+    const rows = document.querySelectorAll("[data-folder-id]");
+    rowRectsRef.current = Array.from(rows).map((el) => ({
+      id: (el as HTMLElement).dataset.folderId!,
+      isRoot: (el as HTMLElement).dataset.isRoot === "true",
+      rect: el.getBoundingClientRect(),
+    }));
   }
 
   function handlePointerMove(e: React.PointerEvent) {
     if (!dragInfo.current) return;
     setGhostPos({ x: e.clientX, y: e.clientY });
 
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const row = el?.closest("[data-folder-id]") as HTMLElement | null;
-    if (!row) { setDropPos(null); return; }
+    const others = rowRectsRef.current.filter((r) => r.id !== dragInfo.current!.id);
+    if (others.length === 0) { setDropPos(null); return; }
 
-    const targetId = row.dataset.folderId!;
-    if (targetId === dragInfo.current.id) { setDropPos(null); return; }
-
-    const isRoot = row.dataset.isRoot === "true";
-    const rect = row.getBoundingClientRect();
-    const ratio = (e.clientY - rect.top) / rect.height;
-
-    let position: "before" | "after" | "into";
-    if (isRoot && ratio > 0.3 && ratio < 0.7) {
-      position = "into";
-    } else {
-      position = ratio < 0.5 ? "before" : "after";
+    // "into" 판정: 포인터가 루트 행의 중간 40% 안에 있을 때
+    const intoCandidate = others.find((r) => {
+      if (!r.isRoot) return false;
+      const ratio = (e.clientY - r.rect.top) / r.rect.height;
+      return e.clientY >= r.rect.top && e.clientY <= r.rect.bottom && ratio > 0.3 && ratio < 0.7;
+    });
+    if (intoCandidate) {
+      setDropPos({ targetId: intoCandidate.id, position: "into" });
+      return;
     }
-    setDropPos({ targetId, position });
+
+    // before/after: 각 행의 중점 기준으로 판단 → 절반만 이동해도 스왑
+    const firstBelowMid = others.find((r) => (r.rect.top + r.rect.height / 2) > e.clientY);
+    if (!firstBelowMid) {
+      setDropPos({ targetId: others[others.length - 1].id, position: "after" });
+    } else {
+      setDropPos({ targetId: firstBelowMid.id, position: "before" });
+    }
   }
 
   async function handlePointerUp() {
@@ -295,12 +321,26 @@ export default function FoldersPage() {
     const Icon = hasChildren && isOpen ? FolderOpen : FolderIcon;
     const isSelected = selectedIds.has(folder.id);
 
+    // 드래그 중 다른 항목 shift 계산
+    let shiftY = 0;
+    if (!isDragging && dragInfo.current && dropPos && dropPos.position !== "into" && ghostPos) {
+      const srcIdx = visibleOrder.indexOf(dragInfo.current.id);
+      const tgtIdx = visibleOrder.indexOf(dropPos.targetId);
+      const itemIdx = visibleOrder.indexOf(folder.id);
+      if (srcIdx !== -1 && tgtIdx !== -1 && itemIdx !== -1) {
+        const destIdx = dropPos.position === "after" ? tgtIdx + 1 : tgtIdx;
+        if (srcIdx < destIdx && itemIdx > srcIdx && itemIdx < destIdx) shiftY = -ROW_HEIGHT;
+        else if (srcIdx > destIdx && itemIdx >= destIdx && itemIdx < srcIdx) shiftY = ROW_HEIGHT;
+      }
+    }
+
     return (
       <div
         key={folder.id}
         data-folder-id={folder.id}
         data-is-root={String(isRoot)}
-        className={`flex items-center gap-2 px-1 py-3 hover:bg-white/5 border-b border-white/10 ${dropClass(folder)} ${isDragging ? "opacity-30" : ""} ${isSelected ? "bg-white/5" : ""}`}
+        style={{ transform: shiftY ? `translateY(${shiftY}px)` : undefined, transition: "transform 150ms ease" }}
+        className={`flex items-center gap-2 px-1 py-3 hover:bg-white/5 border-b border-white/10 ${dropClass(folder)} ${isDragging ? "opacity-0" : ""} ${isSelected ? "bg-white/5" : ""}`}
         onClick={() => handleRowClick(folder)}
       >
         {/* 체크박스: 항상 왼쪽 벽 */}
@@ -579,17 +619,33 @@ export default function FoldersPage() {
         </div>
       )}
 
-      {/* 드래그 고스트 */}
-      {ghostPos && dragInfo.current && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed pointer-events-none z-50 bg-[#2a2a2a] border border-white/20 rounded-xl px-3 py-2 flex items-center gap-2 shadow-xl text-sm text-white/80"
-          style={{ left: ghostPos.x + 12, top: ghostPos.y - 16 }}
-        >
-          <FolderIcon className="w-4 h-4" style={{ color: folders.find(f => f.id === dragInfo.current?.id)?.color ?? "#9ca3af" }} fill="currentColor" />
-          {dragInfo.current.name}
-        </div>,
-        document.body
-      )}
+      {/* 드래그 고스트 - 전체 행 */}
+      {ghostPos && dragInfo.current && typeof window !== "undefined" && (() => {
+        const dragFolder = folders.find((f) => f.id === dragInfo.current?.id);
+        if (!dragFolder) return null;
+        const hasChildren = childFolders(dragFolder.id).length > 0;
+        const isOpen = !collapsed.has(dragFolder.id);
+        const Icon = hasChildren && isOpen ? FolderOpen : FolderIcon;
+        return createPortal(
+          <div
+            className="fixed pointer-events-none z-50 w-full"
+            style={{ top: ghostPos.y - 22, left: 0 }}
+          >
+            <div className="max-w-lg mx-auto px-4">
+              <div className="flex items-center gap-2 px-1 py-3 bg-[#1a1a1a] border border-white/20 rounded-xl shadow-2xl">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="p-1 shrink-0 text-transparent"><ChevronRight className="w-4 h-4" /></span>
+                  <Icon className="w-5 h-5 shrink-0" style={{ color: dragFolder.color ?? "#9ca3af" }} />
+                  <span className="flex-1 text-sm text-white truncate">{dragFolder.name}</span>
+                  <span className="text-xs text-white/30">{dragFolder.links?.[0]?.count ?? 0}</span>
+                  <span className="p-1"><ChevronsUpDown className="w-4 h-4 text-white/20" /></span>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 }
