@@ -38,6 +38,10 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
     navigator.clipboard.writeText(link.url).then(() => onCopy());
   }
 
+  function handleOpen() {
+    window.open(link.url, "_blank", "noopener,noreferrer");
+  }
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -84,7 +88,7 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
   return (
     <article onClick={handleCopy} className="flex gap-3 p-3 rounded-xl border border-white/10 bg-white/5 transition-colors cursor-pointer">
       {/* 썸네일 or 파비콘 */}
-      <a href={link.url} target="_blank" rel="noopener noreferrer" className="shrink-0 mt-0.5" onClick={(e) => e.stopPropagation()}>
+      <button type="button" onClick={(e) => { e.stopPropagation(); handleOpen(); }} className="shrink-0 mt-0.5">
         {link.image && !imageError ? (
           <div className="w-14 h-14 rounded-lg overflow-hidden bg-white/5">
             <Image src={link.image} alt="" width={56} height={56} className="w-full h-full object-cover" unoptimized onError={() => setImageError(true)} />
@@ -99,7 +103,7 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
             </span>
           </div>
         )}
-      </a>
+      </button>
 
       {/* 본문 */}
       <div className="flex-1 min-w-0">
