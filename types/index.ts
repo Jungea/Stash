@@ -27,6 +27,7 @@ export type Folder = {
   name: string;
   parent_id: string | null;
   color: string | null;
+  order: number;
   created_at: string;
   links?: [{ count: number }];
 };

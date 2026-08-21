@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Menu, ChevronRight, CornerUpLeft, Folder as FolderIcon, Plus, Search, ArrowLeft, X, MoreHorizontal } from "lucide-react";
 import { Link, Folder, Tag } from "@/types";
@@ -18,6 +19,7 @@ type Props = {
 };
 
 export default function MainView({ showSavedToast }: Props) {
+  const router = useRouter();
   const [links, setLinks] = useState<Link[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
@@ -263,12 +265,18 @@ export default function MainView({ showSavedToast }: Props) {
             {sortMenuOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setSortMenuOpen(false)} />
-                <div className="absolute right-0 top-10 z-40 w-32 rounded-xl border border-white/10 bg-[#1e1e1e] shadow-xl overflow-hidden text-sm">
+                <div className="absolute right-0 top-10 z-40 w-36 rounded-xl border border-white/10 bg-[#1e1e1e] shadow-xl overflow-hidden text-sm">
                   <button
                     onClick={() => { setSortModalOpen(true); setSortMenuOpen(false); }}
                     className="w-full text-left px-4 py-2.5 text-white/70 hover:bg-white/5 transition-colors"
                   >
                     정렬방식
+                  </button>
+                  <button
+                    onClick={() => { router.push("/folders"); setSortMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-white/70 hover:bg-white/5 transition-colors"
+                  >
+                    폴더 관리
                   </button>
                 </div>
               </>
