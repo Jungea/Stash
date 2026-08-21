@@ -27,11 +27,21 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // API는 항상 네트워크
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(fetch(request));
     return;
   }
 
+  // HTML 페이지는 네트워크 우선 (캐시 폴백)
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // 정적 파일은 캐시 우선
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
