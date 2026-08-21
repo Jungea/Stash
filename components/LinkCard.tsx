@@ -10,6 +10,7 @@ type Props = {
   onToggleFavorite: (id: string, value: boolean) => void;
   onDelete: (id: string) => void;
   onEdit: (link: Link) => void;
+  onCopy: () => void;
 };
 
 function getDomain(url: string) {
@@ -20,10 +21,14 @@ function getDomain(url: string) {
   }
 }
 
-export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: Props) {
+export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onCopy }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(link.url).then(() => onCopy());
+  }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -44,11 +49,11 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: P
       {/* 썸네일 or 파비콘 */}
       <a href={link.url} target="_blank" rel="noopener noreferrer" className="shrink-0 mt-0.5">
         {link.image ? (
-          <div className="w-16 h-12 rounded-lg overflow-hidden bg-white/5">
-            <Image src={link.image} alt="" width={64} height={48} className="w-full h-full object-cover" unoptimized />
+          <div className="w-14 h-14 rounded-lg overflow-hidden bg-white/5">
+            <Image src={link.image} alt="" width={56} height={56} className="w-full h-full object-cover" unoptimized />
           </div>
         ) : (
-          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
+          <div className="w-14 h-14 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
             {link.favicon ? (
               <Image src={link.favicon} alt="" width={20} height={20} unoptimized />
             ) : (
@@ -60,7 +65,7 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: P
 
       {/* 본문 */}
       <div className="flex-1 min-w-0">
-        <a href={link.url} target="_blank" rel="noopener noreferrer" className="block">
+        <button onClick={handleCopy} className="block w-full text-left">
           <p className="text-sm font-medium leading-snug line-clamp-2 text-white">
             {link.is_broken && <span className="text-red-400 mr-1">[깨짐]</span>}
             {title}
@@ -74,7 +79,7 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: P
               <span className="text-xs text-white/25 truncate">· {link.folder.name}</span>
             )}
           </div>
-        </a>
+        </button>
 
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
@@ -88,7 +93,7 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: P
       </div>
 
       {/* 우측 버튼 */}
-      <div className="flex flex-col items-center gap-1 shrink-0">
+      <div className="flex flex-col items-center gap-3 shrink-0">
         <button
           onClick={() => onToggleFavorite(link.id, !link.is_favorite)}
           className={`transition-colors ${
@@ -96,7 +101,7 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: P
           }`}
           aria-label="즐겨찾기"
         >
-          <Star className="w-4 h-4" fill={link.is_favorite ? "currentColor" : "none"} />
+          <Star className="w-5 h-5" fill={link.is_favorite ? "currentColor" : "none"} />
         </button>
 
         <div ref={menuRef} className="relative">
@@ -105,7 +110,7 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit }: P
             className="text-white/20 hover:text-white/60 p-0.5"
             aria-label="더보기"
           >
-            <MoreHorizontal className="w-4 h-4" />
+            <MoreHorizontal className="w-5 h-5" />
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-6 z-20 w-28 rounded-xl border border-white/10 bg-[#1a1a1a] shadow-xl overflow-hidden text-sm">

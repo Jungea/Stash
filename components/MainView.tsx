@@ -277,38 +277,40 @@ export default function MainView({ showSavedToast }: Props) {
           </div>
         </header>
 
+        {/* 브레드크럼 (고정) */}
+        <div className="shrink-0 px-3 pb-2">
+          <div className="flex items-center gap-1 text-xs text-white/40 flex-wrap bg-white/[0.03] rounded-lg px-3 py-2 max-w-4xl mx-auto">
+            <button
+              onClick={() => handleSelectFolder(null)}
+              className={folderPath.length === 0 ? "text-white/80" : "hover:text-white transition-colors"}
+            >
+              전체
+            </button>
+            {folderPath.map((f, i) => (
+              <span key={f.id} className="flex items-center gap-1">
+                <ChevronRight className="w-3 h-3" />
+                <button
+                  onClick={() => handleSelectFolder(f.id)}
+                  className={
+                    i === folderPath.length - 1
+                      ? "text-white/80"
+                      : "hover:text-white transition-colors"
+                  }
+                >
+                  {f.name}
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* 링크 목록 */}
         <main className="flex-1 overflow-y-auto px-3 py-3 pb-24">
           {loading ? (
             <p className="text-center text-white/30 mt-12 text-sm">불러오는 중...</p>
           ) : (
             <div className="max-w-4xl mx-auto">
-              {/* 브레드크럼 */}
-              {showFolderView && (
-                <div className="flex items-center gap-1 mb-3 text-xs text-white/40 flex-wrap bg-white/[0.03] rounded-lg px-3 py-2">
-                  <button
-                    onClick={() => handleSelectFolder(null)}
-                    className={folderPath.length === 0 ? "text-white/80" : "hover:text-white transition-colors"}
-                  >
-                    전체
-                  </button>
-                  {folderPath.map((f, i) => (
-                    <span key={f.id} className="flex items-center gap-1">
-                      <ChevronRight className="w-3 h-3" />
-                      <button
-                        onClick={() => handleSelectFolder(f.id)}
-                        className={
-                          i === folderPath.length - 1
-                            ? "text-white/80"
-                            : "hover:text-white transition-colors"
-                        }
-                      >
-                        {f.name}
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
+              {/* 브레드크럼 자리 제거됨 */}
 
               {/* 하위 폴더 카드 */}
               {showFolderView && (selectedFolderId || currentLevelFolders.length > 0) && (
@@ -359,9 +361,9 @@ export default function MainView({ showSavedToast }: Props) {
                       <LinkCard
                         link={link}
                         onToggleFavorite={handleToggleFavorite}
-
                         onDelete={handleDelete}
                         onEdit={setEditingLink}
+                        onCopy={() => setToast("복사됨 ✓")}
                       />
                     </li>
                   ))}
