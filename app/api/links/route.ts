@@ -9,8 +9,18 @@ export async function GET(req: NextRequest) {
   const favorite = params.get("favorite");
   const sort = params.get("sort") ?? "latest";
   const pinFavorites = params.get("pinFavorites") === "1";
+  const countOnly = params.get("count") === "1";
 
   const supabase = await createClient();
+
+  if (countOnly) {
+    let countQuery = supabase.from("links").select("*", { count: "exact", head: true });
+    if (folderId === "none") countQuery = countQuery.is("folder_id", null);
+    else if (folderId) countQuery = countQuery.eq("folder_id", folderId);
+    const { count, error } = await countQuery;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ count: count ?? 0 });
+  }
 
   let query = supabase
     .from("links")

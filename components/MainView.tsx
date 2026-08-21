@@ -24,6 +24,7 @@ export default function MainView({ showSavedToast }: Props) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unclassifiedCount, setUnclassifiedCount] = useState<number>(0);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -43,7 +44,7 @@ export default function MainView({ showSavedToast }: Props) {
   const showFolderView = !selectedTagId && !favoriteOnly && !searchQuery;
 
   const currentLevelFolders = useMemo(
-    () => folders.filter((f) => f.parent_id === (selectedFolderId ?? null)),
+    () => selectedFolderId === "none" ? [] : folders.filter((f) => f.parent_id === (selectedFolderId ?? null)),
     [folders, selectedFolderId]
   );
 
@@ -89,6 +90,7 @@ export default function MainView({ showSavedToast }: Props) {
         fetchLinks(),
         fetch("/api/folders").then((r) => r.json()).then((d) => setFolders(Array.isArray(d) ? d : [])),
         fetch("/api/tags").then((r) => r.json()).then((d) => setTags(Array.isArray(d) ? d : [])),
+        fetch("/api/links?count=1&folderId=none").then((r) => r.json()).then((d) => setUnclassifiedCount(d?.count ?? 0)),
       ]);
       setLoading(false);
     }
@@ -143,8 +145,8 @@ export default function MainView({ showSavedToast }: Props) {
     await fetch(`/api/links/${id}`, { method: "DELETE" });
   }
 
-  function handleSelectFolder(id: string | null) {
-    setSelectedFolderId(id);
+  function handleSelectFolder(id: string | null | "none") {
+    setSelectedFolderId(id as string | null);
     setSelectedTagId(null);
     setFavoriteOnly(false);
   }
@@ -289,25 +291,32 @@ export default function MainView({ showSavedToast }: Props) {
           <div className="flex items-center gap-1 text-xs text-white/40 flex-wrap bg-white/[0.03] rounded-lg px-3 py-2 max-w-4xl mx-auto">
             <button
               onClick={() => handleSelectFolder(null)}
-              className={folderPath.length === 0 ? "text-white/80" : "hover:text-white transition-colors"}
+              className={folderPath.length === 0 && selectedFolderId !== "none" ? "text-white/80" : "hover:text-white transition-colors"}
             >
               전체
             </button>
-            {folderPath.map((f, i) => (
-              <span key={f.id} className="flex items-center gap-1">
+            {selectedFolderId === "none" ? (
+              <span className="flex items-center gap-1">
                 <ChevronRight className="w-3 h-3" />
-                <button
-                  onClick={() => handleSelectFolder(f.id)}
-                  className={
-                    i === folderPath.length - 1
-                      ? "text-white/80"
-                      : "hover:text-white transition-colors"
-                  }
-                >
-                  {f.name}
-                </button>
+                <span className="text-white/80">미분류</span>
               </span>
-            ))}
+            ) : (
+              folderPath.map((f, i) => (
+                <span key={f.id} className="flex items-center gap-1">
+                  <ChevronRight className="w-3 h-3" />
+                  <button
+                    onClick={() => handleSelectFolder(f.id)}
+                    className={
+                      i === folderPath.length - 1
+                        ? "text-white/80"
+                        : "hover:text-white transition-colors"
+                    }
+                  >
+                    {f.name}
+                  </button>
+                </span>
+              ))
+            )}
           </div>
         </div>
 
@@ -320,7 +329,7 @@ export default function MainView({ showSavedToast }: Props) {
               {/* 브레드크럼 자리 제거됨 */}
 
               {/* 하위 폴더 카드 */}
-              {showFolderView && (selectedFolderId || currentLevelFolders.length > 0) && (
+              {showFolderView && selectedFolderId !== "none" && (selectedFolderId || currentLevelFolders.length > 0 || unclassifiedCount > 0) && (
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-4">
                   {/* 상위 폴더로 이동 */}
                   {selectedFolderId && (
@@ -330,6 +339,24 @@ export default function MainView({ showSavedToast }: Props) {
                     >
                       <CornerUpLeft className="w-4 h-4 shrink-0" />
                       <span className="text-sm text-white/50 truncate">..</span>
+                    </button>
+                  )}
+                  {/* 미분류 카드 (루트에서만) */}
+                  {!selectedFolderId && unclassifiedCount > 0 && (
+                    <button
+                      onClick={() => handleSelectFolder("none")}
+                      className="aspect-square relative rounded-xl border border-white/10 overflow-hidden transition-colors bg-white/5 hover:bg-white/[0.08]"
+                    >
+                      <FolderIcon
+                        className="absolute -bottom-3 -right-3 w-4/5 h-4/5 opacity-10"
+                        fill="currentColor"
+                        style={{ color: "#9ca3af" }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-2 flex items-end justify-between gap-1">
+                        <span className="text-xs text-white/60 truncate">미분류</span>
+                        <span className="text-xs text-white/40 shrink-0">{unclassifiedCount}</span>
+                      </div>
                     </button>
                   )}
                   {currentLevelFolders.map((folder) => (
