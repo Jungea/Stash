@@ -1,30 +1,42 @@
 "use client";
 
-import { useState, FormEvent } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
-import { Link, Folder } from "@/types";
-import CustomSelect from "./CustomSelect";
+import { useState, useRef, FormEvent } from "react";
+import { Loader2, Import } from "lucide-react";
+import Image from "next/image";
+import { Link } from "@/types";
 
 type Props = {
   link: Link;
-  folders: Folder[];
   onSave: (data: {
     url: string;
     title: string | null;
     description: string | null;
-    folder_id: string | null;
   }) => Promise<void>;
   onClose: () => void;
 };
 
-export default function EditLinkModal({ link, folders, onSave, onClose }: Props) {
+export default function EditLinkModal({ link, onSave, onClose }: Props) {
   const [url, setUrl] = useState(link.url);
   const [title, setTitle] = useState(link.title ?? "");
   const [description, setDescription] = useState(link.description ?? "");
-  const [folderId, setFolderId] = useState(link.folder_id ?? "");
   const [fetching, setFetching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const dragStartY = useRef<number | null>(null);
+
+  function handleHandlePointerDown(e: React.PointerEvent) {
+    dragStartY.current = e.clientY;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  function handleHandlePointerUp(e: React.PointerEvent) {
+    if (dragStartY.current === null) return;
+    const delta = e.clientY - dragStartY.current;
+    if (delta < -30) setExpanded(true);
+    else if (delta > 30) expanded ? setExpanded(false) : onClose();
+    dragStartY.current = null;
+  }
 
   async function fetchMeta() {
     if (!url.trim()) return;
@@ -50,7 +62,6 @@ export default function EditLinkModal({ link, folders, onSave, onClose }: Props)
         url: url.trim(),
         title: title.trim() || null,
         description: description.trim() || null,
-        folder_id: folderId || null,
       });
       onClose();
     } catch {
@@ -62,75 +73,86 @@ export default function EditLinkModal({ link, folders, onSave, onClose }: Props)
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/60"
+      className="fixed inset-0 z-40 flex items-end justify-center bg-black/60"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full sm:max-w-md bg-[#1a1a1a] rounded-t-2xl sm:rounded-2xl p-6 flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-white">링크 수정</h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div className="flex gap-2">
+      <div
+        className={`w-full bg-[#1a1a1a] flex flex-col transition-all duration-300 ${
+          expanded ? "h-full rounded-none" : "max-h-[85vh] rounded-t-2xl"
+        }`}
+      >
+        {/* 핸들 */}
+        <div
+          className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none shrink-0"
+          onPointerDown={handleHandlePointerDown}
+          onPointerUp={handleHandlePointerUp}
+        >
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+          <h2 className="text-lg font-semibold text-white">링크 수정</h2>
+          {link.image && (
+            <div className="relative w-32 h-20 rounded-xl overflow-hidden bg-white/5">
+              <Image src={link.image} alt="" fill className="object-cover" unoptimized />
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input
               type="url"
               placeholder="https://..."
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               required
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
             />
-            <button
-              type="button"
-              onClick={fetchMeta}
-              disabled={fetching || !url}
-              className="rounded-xl border border-white/10 px-3 py-3 text-white/50 hover:text-white hover:bg-white/5 text-sm disabled:opacity-30 shrink-0"
-            >
-              {fetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            </button>
-          </div>
 
-          <input
-            type="text"
-            placeholder="이름"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
-          />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="이름"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
+              />
+              <button
+                type="button"
+                onClick={fetchMeta}
+                disabled={fetching || !url}
+                className="rounded-xl border border-white/10 px-3 py-3 text-white/50 hover:text-white hover:bg-white/5 text-sm disabled:opacity-30 shrink-0"
+              >
+                {fetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Import className="w-4 h-4" />}
+              </button>
+            </div>
 
-          <textarea
-            placeholder="설명"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm resize-none"
-          />
-
-          {folders.length > 0 && (
-            <CustomSelect
-              value={folderId}
-              onChange={setFolderId}
-              options={folders.map((f) => ({ value: f.id, label: f.name }))}
-              placeholder="폴더 선택 (선택사항)"
+            <textarea
+              placeholder="설명"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm resize-none"
             />
-          )}
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p className="text-red-400 text-sm">{error}</p>}
 
-          <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 text-sm hover:bg-white/5"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 py-3 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 disabled:opacity-50"
-            >
-              {loading ? "저장 중..." : "저장"}
-            </button>
-          </div>
-        </form>
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 text-sm hover:bg-white/5"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 py-3 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 disabled:opacity-50"
+              >
+                {loading ? "저장 중..." : "저장"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

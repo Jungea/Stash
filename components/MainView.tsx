@@ -124,7 +124,6 @@ export default function MainView({ showSavedToast }: Props) {
     url: string;
     title: string | null;
     description: string | null;
-    folder_id: string | null;
   }) {
     if (!editingLink) return;
     const res = await fetch(`/api/links/${editingLink.id}`, {
@@ -392,7 +391,6 @@ export default function MainView({ showSavedToast }: Props) {
       {editingLink && (
         <EditLinkModal
           link={editingLink}
-          folders={folders}
           onSave={handleEditLink}
           onClose={() => setEditingLink(null)}
         />
