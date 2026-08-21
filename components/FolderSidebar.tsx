@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronRight, Star, Hash, Plus, Folder as FolderIcon } from "lucide-react";
+import { ChevronDown, ChevronRight, Star, Hash, Plus, Folder as FolderIcon, FolderX } from "lucide-react";
 import { Folder, FolderNode, Tag } from "@/types";
 
 const FOLDER_COLORS = [
@@ -13,7 +13,7 @@ const FOLDER_COLORS = [
 type Props = {
   folders: Folder[];
   tags: Tag[];
-  selectedFolderId: string | null;
+  selectedFolderId: string | null | "none";
   selectedTagId: string | null;
   favoriteOnly: boolean;
   onSelectFolder: (id: string | null) => void;
@@ -305,6 +305,17 @@ export default function FolderSidebar({
         }`}
       >
         <Star className="w-4 h-4" /> 즐겨찾기
+      </button>
+
+      <button
+        onClick={() => handleSelectFolder("none")}
+        className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-left transition-colors ${
+          selectedFolderId === "none"
+            ? "bg-white/10 text-white"
+            : "text-white/60 hover:text-white hover:bg-white/5"
+        }`}
+      >
+        <FolderX className="w-4 h-4" /> 미분류
       </button>
 
       {/* 폴더 */}

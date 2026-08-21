@@ -40,6 +40,12 @@ export default function MainView({ showSavedToast }: Props) {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [sortModalOpen, setSortModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(showSavedToast ? "저장됨 ✓" : null);
+  const [addFolderOpen, setAddFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderColor, setNewFolderColor] = useState("#9ca3af");
+  const [addingFolder, setAddingFolder] = useState(false);
+
+  const FOLDER_COLORS = ["#9ca3af","#f87171","#fb923c","#facc15","#4ade80","#60a5fa","#a78bfa","#f472b6"];
 
   const showFolderView = !selectedTagId && !favoriteOnly && !searchQuery;
 
@@ -168,11 +174,13 @@ export default function MainView({ showSavedToast }: Props) {
     setFolders(Array.isArray(d) ? d : []);
   }
 
-  async function handleCreateFolder(name: string, parentId?: string) {
+  async function handleCreateFolder(name: string, parentId?: string, color?: string) {
+    const siblings = folders.filter((f) => (f.parent_id ?? undefined) === parentId);
+    const maxOrder = Math.max(-1, ...siblings.map((f) => f.order));
     await fetch("/api/folders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, parentId }),
+      body: JSON.stringify({ name, parentId, color, order: maxOrder + 1 }),
     });
     await fetchFolders();
   }
@@ -274,6 +282,14 @@ export default function MainView({ showSavedToast }: Props) {
                   >
                     정렬방식
                   </button>
+                  {selectedFolderId !== "none" && (
+                    <button
+                      onClick={() => { setNewFolderName(""); setNewFolderColor("#9ca3af"); setAddFolderOpen(true); setSortMenuOpen(false); }}
+                      className="w-full text-left px-4 py-2.5 text-white/70 hover:bg-white/5 transition-colors"
+                    >
+                      폴더 추가
+                    </button>
+                  )}
                   <button
                     onClick={() => { router.push("/folders"); setSortMenuOpen(false); }}
                     className="w-full text-left px-4 py-2.5 text-white/70 hover:bg-white/5 transition-colors"
@@ -335,28 +351,10 @@ export default function MainView({ showSavedToast }: Props) {
                   {selectedFolderId && (
                     <button
                       onClick={() => handleSelectFolder(folderPath[folderPath.length - 2]?.id ?? null)}
-                      className="flex items-center gap-2 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.08] text-left transition-colors"
+                      className="aspect-square relative rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.08] overflow-hidden transition-colors"
                     >
-                      <CornerUpLeft className="w-4 h-4 shrink-0" />
-                      <span className="text-sm text-white/50 truncate">..</span>
-                    </button>
-                  )}
-                  {/* 미분류 카드 (루트에서만) */}
-                  {!selectedFolderId && unclassifiedCount > 0 && (
-                    <button
-                      onClick={() => handleSelectFolder("none")}
-                      className="aspect-square relative rounded-xl border border-white/10 overflow-hidden transition-colors bg-white/5 hover:bg-white/[0.08]"
-                    >
-                      <FolderIcon
-                        className="absolute -bottom-3 -right-3 w-4/5 h-4/5 opacity-10"
-                        fill="currentColor"
-                        style={{ color: "#9ca3af" }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                      <div className="absolute bottom-0 left-0 right-0 p-2 flex items-end justify-between gap-1">
-                        <span className="text-xs text-white/60 truncate">미분류</span>
-                        <span className="text-xs text-white/40 shrink-0">{unclassifiedCount}</span>
-                      </div>
+                      <CornerUpLeft className="absolute inset-0 m-auto w-1/2 h-1/2 opacity-20 text-white" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                     </button>
                   )}
                   {currentLevelFolders.map((folder) => (
@@ -379,8 +377,8 @@ export default function MainView({ showSavedToast }: Props) {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                       {/* 텍스트 */}
                       <div className="absolute bottom-0 left-0 right-0 p-2 flex items-end justify-between gap-1">
-                        <span className="text-xs text-white truncate">{folder.name}</span>
-                        <span className="text-xs text-white/40 shrink-0">{folder.links?.[0]?.count ?? 0}</span>
+                        <span className="text-[10px] text-white break-words leading-tight text-left">{folder.name}</span>
+                        <span className="text-[10px] text-white/40 shrink-0">{folder.links?.[0]?.count ?? 0}</span>
                       </div>
                     </button>
                   ))}
@@ -498,6 +496,60 @@ export default function MainView({ showSavedToast }: Props) {
           }}
           onClose={() => setSortModalOpen(false)}
         />
+      )}
+
+      {/* 폴더 추가 모달 */}
+      {addFolderOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60" onClick={(e) => e.target === e.currentTarget && setAddFolderOpen(false)}>
+          <div className="w-full max-w-md bg-[#1a1a1a] rounded-t-2xl p-6 flex flex-col gap-4">
+            <h2 className="text-base font-semibold text-white">
+              {selectedFolderId ? "하위 폴더 추가" : "폴더 추가"}
+            </h2>
+            <input
+              autoFocus
+              type="text"
+              placeholder="폴더 이름"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key === "Enter" && newFolderName.trim() && !addingFolder) {
+                  setAddingFolder(true);
+                  await handleCreateFolder(newFolderName.trim(), selectedFolderId ?? undefined, newFolderColor);
+                  setAddFolderOpen(false);
+                  setAddingFolder(false);
+                  setToast("폴더 추가됨 ✓");
+                }
+              }}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/30 text-sm"
+            />
+            <div className="flex gap-2 flex-wrap">
+              {FOLDER_COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setNewFolderColor(c)}
+                  className={`w-7 h-7 rounded-full border-2 transition-all ${newFolderColor === c ? "border-white scale-110" : "border-transparent"}`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setAddFolderOpen(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 text-sm hover:bg-white/5">취소</button>
+              <button
+                disabled={!newFolderName.trim() || addingFolder}
+                onClick={async () => {
+                  setAddingFolder(true);
+                  await handleCreateFolder(newFolderName.trim(), selectedFolderId ?? undefined, newFolderColor);
+                  setAddFolderOpen(false);
+                  setAddingFolder(false);
+                  setToast("폴더 추가됨 ✓");
+                }}
+                className="flex-1 py-3 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 disabled:opacity-50"
+              >
+                {addingFolder ? "추가 중..." : "추가"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 플로팅 추가 버튼 */}
