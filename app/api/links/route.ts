@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   const tagId = params.get("tagId");
   const favorite = params.get("favorite");
   const sort = params.get("sort") ?? "latest";
+  const pinFavorites = params.get("pinFavorites") === "1";
 
   const supabase = await createClient();
 
@@ -41,10 +42,11 @@ export async function GET(req: NextRequest) {
     query = query.in("id", ids);
   }
 
+  if (pinFavorites) {
+    query = query.order("is_favorite", { ascending: false });
+  }
   if (sort === "title") {
     query = query.order("title", { ascending: true });
-  } else if (sort === "favorite") {
-    query = query.order("is_favorite", { ascending: false }).order("created_at", { ascending: false });
   } else {
     query = query.order("created_at", { ascending: false });
   }

@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { Menu, ChevronRight, CornerUpLeft, Folder as FolderIcon, Plus } from "lucide-react";
+import { Menu, ChevronRight, CornerUpLeft, Folder as FolderIcon, Plus, Search, ArrowLeft, X, MoreHorizontal } from "lucide-react";
 import { Link, Folder, Tag } from "@/types";
 import LinkCard from "./LinkCard";
 import AddLinkModal from "./AddLinkModal";
 import CustomSelect from "./CustomSelect";
 import EditLinkModal from "./EditLinkModal";
 import Toast from "./Toast";
+import SortModal from "./SortModal";
 
 const FolderSidebar = dynamic(() => import("./FolderSidebar"), { ssr: false });
 
@@ -26,11 +27,15 @@ export default function MainView({ showSavedToast }: Props) {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [favoriteOnly, setFavoriteOnly] = useState(false);
-  const [sort, setSort] = useState<"latest" | "title" | "favorite">("latest");
+  const [sort, setSort] = useState<"latest" | "title">("latest");
+  const [pinFavorites, setPinFavorites] = useState(false);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingLink, setEditingLink] = useState<Link | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [sortModalOpen, setSortModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(showSavedToast ? "저장됨 ✓" : null);
 
   const showFolderView = !selectedTagId && !favoriteOnly && !searchQuery;
@@ -52,6 +57,16 @@ export default function MainView({ showSavedToast }: Props) {
     return path;
   }, [folders, selectedFolderId]);
 
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((prefs) => {
+        if (prefs.sort) setSort(prefs.sort);
+        if (prefs.pinFavorites !== undefined) setPinFavorites(prefs.pinFavorites);
+      })
+      .catch(() => {});
+  }, []);
+
   const fetchLinks = useCallback(async () => {
     const params = new URLSearchParams();
     if (searchQuery) params.set("q", searchQuery);
@@ -59,10 +74,11 @@ export default function MainView({ showSavedToast }: Props) {
     if (selectedTagId) params.set("tagId", selectedTagId);
     if (favoriteOnly) params.set("favorite", "1");
     params.set("sort", sort);
+    if (pinFavorites) params.set("pinFavorites", "1");
 
     const res = await fetch(`/api/links?${params}`);
     if (res.ok) setLinks(await res.json());
-  }, [searchQuery, selectedFolderId, selectedTagId, favoriteOnly, sort]);
+  }, [searchQuery, selectedFolderId, selectedTagId, favoriteOnly, sort, pinFavorites]);
 
   useEffect(() => {
     async function init() {
@@ -221,7 +237,7 @@ export default function MainView({ showSavedToast }: Props) {
       {/* 메인 */}
       <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
         {/* 헤더 */}
-        <header className="flex items-center gap-2 px-3 py-3 border-b border-white/5 shrink-0">
+        <header className="flex items-center gap-2 px-3 py-3 shrink-0">
           <button
             className="p-2 text-white/60 hover:text-white"
             onClick={() => setSidebarOpen((v) => !v)}
@@ -229,43 +245,50 @@ export default function MainView({ showSavedToast }: Props) {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <input
-            type="search"
-            placeholder="검색..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
-          />
-          <CustomSelect
-            value={sort}
-            onChange={(v) => setSort(v as typeof sort)}
-            options={[
-              { value: "latest", label: "최신순" },
-              { value: "title", label: "이름순" },
-              { value: "favorite", label: "즐겨찾기" },
-            ]}
-            className="w-28 shrink-0"
-          />
+          <div className="flex-1" />
           <button
-            onClick={() => setShowAddModal(true)}
-            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-white/90 shrink-0"
+            onClick={() => setSearchOpen(true)}
+            className="p-2 text-white/60 hover:text-white"
+            aria-label="검색"
           >
-            <Plus className="w-4 h-4" />
+            <Search className="w-5 h-5" />
           </button>
+          <div className="relative">
+            <button
+              onClick={() => setSortMenuOpen((v) => !v)}
+              className="p-2 text-white/60 hover:text-white"
+              aria-label="정렬"
+            >
+              <MoreHorizontal className="w-5 h-5" />
+            </button>
+            {sortMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setSortMenuOpen(false)} />
+                <div className="absolute right-0 top-10 z-40 w-32 rounded-xl border border-white/10 bg-[#1e1e1e] shadow-xl overflow-hidden text-sm">
+                  <button
+                    onClick={() => { setSortModalOpen(true); setSortMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-white/70 hover:bg-white/5 transition-colors"
+                  >
+                    정렬방식
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </header>
 
         {/* 링크 목록 */}
-        <main className="flex-1 overflow-y-auto px-3 py-3">
+        <main className="flex-1 overflow-y-auto px-3 py-3 pb-24">
           {loading ? (
             <p className="text-center text-white/30 mt-12 text-sm">불러오는 중...</p>
           ) : (
             <div className="max-w-4xl mx-auto">
               {/* 브레드크럼 */}
-              {showFolderView && folderPath.length > 0 && (
-                <div className="flex items-center gap-1 mb-3 text-xs text-white/40 flex-wrap">
+              {showFolderView && (
+                <div className="flex items-center gap-1 mb-3 text-xs text-white/40 flex-wrap bg-white/[0.03] rounded-lg px-3 py-2">
                   <button
                     onClick={() => handleSelectFolder(null)}
-                    className="hover:text-white transition-colors"
+                    className={folderPath.length === 0 ? "text-white/80" : "hover:text-white transition-colors"}
                   >
                     전체
                   </button>
@@ -357,6 +380,83 @@ export default function MainView({ showSavedToast }: Props) {
           onClose={() => setEditingLink(null)}
         />
       )}
+
+      {/* 검색 오버레이 */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-50 bg-[#0a0a0a] flex flex-col">
+          <header className="flex items-center gap-2 px-3 py-3 border-b border-white/5 shrink-0">
+            <button
+              onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+              className="p-2 text-white/60 hover:text-white"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <input
+              autoFocus
+              type="text"
+              placeholder="검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent text-white placeholder-white/30 outline-none text-sm"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="p-1 text-white/40 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </header>
+          <main className="flex-1 overflow-y-auto px-3 py-3">
+            {loading ? (
+              <p className="text-center text-white/30 mt-12 text-sm">불러오는 중...</p>
+            ) : searchQuery && links.length === 0 ? (
+              <p className="text-center text-white/30 mt-12 text-sm">검색 결과 없음</p>
+            ) : searchQuery ? (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-4xl mx-auto">
+                {links.map((link) => (
+                  <li key={link.id}>
+                    <LinkCard
+                      link={link}
+                      onToggleFavorite={handleToggleFavorite}
+                      onDelete={handleDelete}
+                      onEdit={setEditingLink}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-center text-white/30 mt-12 text-sm">검색어를 입력하세요</p>
+            )}
+          </main>
+        </div>
+      )}
+
+      {/* 정렬 모달 */}
+      {sortModalOpen && (
+        <SortModal
+          current={sort}
+          pinFavorites={pinFavorites}
+          onConfirm={(v, pin) => {
+            setSort(v);
+            setPinFavorites(pin);
+            setSortModalOpen(false);
+            fetch("/api/settings", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sort: v, pinFavorites: pin }),
+            }).catch(() => {});
+          }}
+          onClose={() => setSortModalOpen(false)}
+        />
+      )}
+
+      {/* 플로팅 추가 버튼 */}
+      <button
+        onClick={() => setShowAddModal(true)}
+        className="fixed bottom-8 right-6 z-20 w-14 h-14 rounded-full bg-white text-black shadow-lg hover:bg-white/90 flex items-center justify-center transition-transform active:scale-95"
+        aria-label="링크 추가"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       {/* 토스트 */}
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
