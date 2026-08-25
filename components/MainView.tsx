@@ -305,7 +305,7 @@ export default function MainView({ showSavedToast }: Props) {
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-white/30 font-medium tracking-wider uppercase">Stash</p>
+            <span className="text-white/30 text-lg font-black leading-none">Stash</span>
             <button
               onClick={handleLogout}
               className="text-white/30 hover:text-white/70 transition-colors"

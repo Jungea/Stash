@@ -31,9 +31,9 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4">
       <div className="w-full max-w-sm">
-        <h1 className="mb-8 text-center text-3xl font-bold tracking-tight text-white">
-          Stash
-        </h1>
+        <div className="mb-8 flex justify-center">
+          <span className="text-white text-5xl font-black">Stash</span>
+        </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="email"
