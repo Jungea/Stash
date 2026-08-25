@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
@@ -43,6 +43,14 @@ export default function MainView({ showSavedToast }: Props) {
   });
   const [sort, setSort] = useState<"latest" | "title">("latest");
   const [pinFavorites, setPinFavorites] = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const LIMIT = 20;
+  const scrollContainerRef = useRef<HTMLElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -105,10 +113,11 @@ export default function MainView({ showSavedToast }: Props) {
         if (prefs.sort) setSort(prefs.sort);
         if (prefs.pinFavorites !== undefined) setPinFavorites(prefs.pinFavorites);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setSettingsReady(true));
   }, []);
 
-  const fetchLinks = useCallback(async () => {
+  const fetchLinks = useCallback(async (pageNum = 0, append = false) => {
     const params = new URLSearchParams();
     if (searchQuery) params.set("q", searchQuery);
     if (selectedFolderId) params.set("folderId", selectedFolderId);
@@ -116,16 +125,24 @@ export default function MainView({ showSavedToast }: Props) {
     if (favoriteOnly) params.set("favorite", "1");
     params.set("sort", sort);
     if (pinFavorites) params.set("pinFavorites", "1");
+    params.set("page", String(pageNum));
+    params.set("limit", String(LIMIT));
 
     const res = await fetch(`/api/links?${params}`);
-    if (res.ok) setLinks(await res.json());
-  }, [searchQuery, selectedFolderId, selectedTagId, favoriteOnly, sort, pinFavorites]);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (append) setLinks((prev) => [...prev, ...data]);
+    else setLinks(data);
+    setPage(pageNum);
+    setHasMore(data.length === LIMIT);
+  }, [searchQuery, selectedFolderId, selectedTagId, favoriteOnly, sort, pinFavorites, LIMIT]);
 
   useEffect(() => {
+    if (!settingsReady) return;
     async function init() {
       setLoading(true);
       await Promise.all([
-        fetchLinks(),
+        fetchLinks(0, false),
         fetch("/api/folders").then((r) => r.json()).then((d) => setFolders(Array.isArray(d) ? d : [])),
         fetch("/api/tags").then((r) => r.json()).then((d) => setTags(Array.isArray(d) ? d : [])),
         fetch("/api/links?count=1&folderId=none").then((r) => r.json()).then((d) => setUnclassifiedCount(d?.count ?? 0)),
@@ -133,7 +150,29 @@ export default function MainView({ showSavedToast }: Props) {
       setLoading(false);
     }
     init();
-  }, [fetchLinks]);
+  }, [fetchLinks, settingsReady]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || loading) return;
+    setLoadingMore(true);
+    await fetchLinks(page + 1, true);
+    setLoadingMore(false);
+  }, [fetchLinks, loadingMore, hasMore, loading, page]);
+
+  const loadMoreRef = useRef(loadMore);
+  useEffect(() => { loadMoreRef.current = loadMore; });
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const root = scrollContainerRef.current;
+    if (!sentinel || !root) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMoreRef.current(); },
+      { root, threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
 
   async function handleAddLink(data: {
     url: string;
@@ -400,7 +439,7 @@ export default function MainView({ showSavedToast }: Props) {
         </div>
 
         {/* 링크 목록 */}
-        <main className="flex-1 overflow-y-auto px-3 py-3 pb-24">
+        <main ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 py-3 pb-24">
           {loading ? (
             <div className="max-w-4xl mx-auto">
               {/* 폴더 카드 스켈레톤 */}
@@ -483,6 +522,14 @@ export default function MainView({ showSavedToast }: Props) {
                 (!showFolderView || currentLevelFolders.length === 0) && (
                   <p className="text-center text-white/30 mt-12 text-sm">링크가 없습니다.</p>
                 )
+              )}
+
+              {/* 무한 스크롤 sentinel */}
+              <div ref={sentinelRef} className="h-1" />
+              {loadingMore && (
+                <div className="flex justify-center py-6">
+                  <div className="w-5 h-5 rounded-full border-2 border-white/20 border-t-white/50 animate-spin" />
+                </div>
               )}
             </div>
           )}

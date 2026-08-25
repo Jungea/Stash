@@ -10,6 +10,8 @@ export async function GET(req: NextRequest) {
   const sort = params.get("sort") ?? "latest";
   const pinFavorites = params.get("pinFavorites") === "1";
   const countOnly = params.get("count") === "1";
+  const page = parseInt(params.get("page") ?? "0");
+  const limit = parseInt(params.get("limit") ?? "0");
 
   const supabase = await createClient();
 
@@ -59,6 +61,10 @@ export async function GET(req: NextRequest) {
     query = query.order("title", { ascending: true });
   } else {
     query = query.order("created_at", { ascending: false });
+  }
+
+  if (limit > 0) {
+    query = query.range(page * limit, page * limit + limit - 1);
   }
 
   const { data, error } = await query;
