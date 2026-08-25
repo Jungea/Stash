@@ -663,7 +663,7 @@ export default function MainView({ showSavedToast }: Props) {
             await Promise.all([...selectedLinkIds].map((id) =>
               fetch(`/api/links/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folder_id: folderId }) })
             ));
-            await fetchLinks();
+            await Promise.all([fetchLinks(), fetchFolders()]);
             setMoveFolderOpen(false);
             setSelectedLinkIds(new Set());
             setLinkSelectionMode(false);
