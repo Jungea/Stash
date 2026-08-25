@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Menu, ChevronRight, CornerUpLeft, Folder as FolderIcon, FolderOpen, FolderInput, Folders, Plus, Search, ArrowLeft, X, MoreHorizontal, Trash2, LogOut } from "lucide-react";
 import { Link, Folder, Tag } from "@/types";
 import LinkCard from "./LinkCard";
+import LinkCardSkeleton from "./LinkCardSkeleton";
 import AddLinkModal from "./AddLinkModal";
 import CustomSelect from "./CustomSelect";
 import EditLinkModal from "./EditLinkModal";
@@ -401,7 +402,20 @@ export default function MainView({ showSavedToast }: Props) {
         {/* 링크 목록 */}
         <main className="flex-1 overflow-y-auto px-3 py-3 pb-24">
           {loading ? (
-            <p className="text-center text-white/30 mt-12 text-sm">불러오는 중...</p>
+            <div className="max-w-4xl mx-auto">
+              {/* 폴더 카드 스켈레톤 */}
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="aspect-square rounded-xl bg-white/[0.07] animate-pulse" />
+                ))}
+              </div>
+              {/* 링크 카드 스켈레톤 */}
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <li key={i}><LinkCardSkeleton /></li>
+                ))}
+              </ul>
+            </div>
           ) : (
             <div className="max-w-4xl mx-auto">
               {/* 브레드크럼 자리 제거됨 */}
@@ -521,7 +535,11 @@ export default function MainView({ showSavedToast }: Props) {
           </header>
           <main className="flex-1 overflow-y-auto px-3 py-3">
             {loading ? (
-              <p className="text-center text-white/30 mt-12 text-sm">불러오는 중...</p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-4xl mx-auto">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <li key={i}><LinkCardSkeleton /></li>
+                ))}
+              </ul>
             ) : searchQuery && links.length === 0 ? (
               <p className="text-center text-white/30 mt-12 text-sm">검색 결과 없음</p>
             ) : searchQuery ? (
