@@ -52,7 +52,20 @@ function FolderItem({
   onCreateFolder: (name: string, parentId?: string) => Promise<void>;
   onChangeColor: (id: string, color: string | null) => Promise<void>;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`stash-folder-open-${node.id}`);
+      return stored === null ? true : stored === "true";
+    } catch {
+      return true;
+    }
+  });
+
+  function toggleOpen() {
+    const next = !open;
+    setOpen(next);
+    try { localStorage.setItem(`stash-folder-open-${node.id}`, String(next)); } catch {}
+  }
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [editing, setEditing] = useState(false);
@@ -106,6 +119,7 @@ function FolderItem({
 async function handleCreateChild() {
     if (childName.trim()) {
       setOpen(true);
+      try { localStorage.setItem(`stash-folder-open-${node.id}`, "true"); } catch {}
       await onCreateFolder(childName.trim(), node.id);
     }
     setChildName("");
@@ -136,7 +150,7 @@ async function handleCreateChild() {
         <div className="flex items-center gap-2 flex-1 min-w-0" style={{ paddingLeft: depth * 24 }}>
           <button
             className={`p-1 shrink-0 ${hasChildren ? "text-white/20 hover:text-white/50" : "text-transparent cursor-default"}`}
-            onClick={(e) => { e.stopPropagation(); if (hasChildren) setOpen(!open); }}
+            onClick={(e) => { e.stopPropagation(); if (hasChildren) toggleOpen(); }}
           >
             <ChevronRight className={`w-4 h-4 transition-transform ${open && hasChildren ? "rotate-90" : ""}`} />
           </button>

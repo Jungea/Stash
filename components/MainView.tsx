@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Menu, ChevronRight, CornerUpLeft, Folder as FolderIcon, FolderOpen, FolderInput, Folders, Plus, Search, ArrowLeft, X, MoreHorizontal, Trash2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { Menu, ChevronRight, CornerUpLeft, Folder as FolderIcon, FolderOpen, FolderInput, Folders, Plus, Search, ArrowLeft, X, MoreHorizontal, Trash2, LogOut } from "lucide-react";
 import { Link, Folder, Tag } from "@/types";
 import LinkCard from "./LinkCard";
 import AddLinkModal from "./AddLinkModal";
@@ -205,6 +206,12 @@ export default function MainView({ showSavedToast }: Props) {
     setFolders(Array.isArray(d) ? d : []);
   }
 
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.replace("/login");
+  }
+
   async function handleCreateFolder(name: string, parentId?: string, color?: string) {
     const siblings = folders.filter((f) => (f.parent_id ?? undefined) === parentId);
     const maxOrder = Math.max(-1, ...siblings.map((f) => f.order));
@@ -257,7 +264,16 @@ export default function MainView({ showSavedToast }: Props) {
         }`}
       >
         <div className="p-4">
-          <p className="text-xs text-white/30 font-medium mb-2 tracking-wider uppercase">Stash</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-white/30 font-medium tracking-wider uppercase">Stash</p>
+            <button
+              onClick={handleLogout}
+              className="text-white/30 hover:text-white/70 transition-colors"
+              title="로그아웃"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
           <FolderSidebar
             folders={folders}
             tags={tags}
