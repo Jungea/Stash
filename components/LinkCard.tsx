@@ -111,9 +111,9 @@ export default function LinkCard({ link, onToggleFavorite, onDelete, onEdit, onC
           {link.is_broken && <span className="text-red-400 mr-1">[깨짐]</span>}
           {title}
         </p>
-        {link.description && (
-          <p className="mt-0.5 text-xs text-white/40 line-clamp-2 leading-snug">{link.description}</p>
-        )}
+        <p className="mt-0.5 text-xs text-white/40 line-clamp-2 leading-snug min-h-[calc(2*1.375*0.75rem)]">
+          {link.description}
+        </p>
         <div className="mt-0.5 flex flex-col min-w-0">
           <p className="text-xs text-white/30 truncate">{domain}</p>
           {link.folder && (

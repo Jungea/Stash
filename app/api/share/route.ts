@@ -69,10 +69,10 @@ export async function saveLink(
     .insert({
       user_id: user.id,
       url,
-      title: title ?? meta.title,
-      description: description ?? meta.description,
+      title: title ?? null,
+      description: description ?? null,
       image: meta.image,
-      favicon: meta.favicon,
+      favicon: null,
       folder_id: folderId,
     })
     .select()

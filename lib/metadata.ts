@@ -1,15 +1,12 @@
 import * as cheerio from "cheerio";
 
 export interface LinkMetadata {
-  title: string | null;
-  description: string | null;
   image: string | null;
-  favicon: string | null;
 }
 
-/** URL에서 OG 메타데이터를 크롤링한다. 실패하면 null 필드로 반환 */
+/** URL에서 OG 이미지만 크롤링한다. 실패하면 null 반환 */
 export async function fetchMetadata(url: string): Promise<LinkMetadata> {
-  const empty: LinkMetadata = { title: null, description: null, image: null, favicon: null };
+  const empty: LinkMetadata = { image: null };
 
   try {
     const res = await fetch(url, {
@@ -25,32 +22,12 @@ export async function fetchMetadata(url: string): Promise<LinkMetadata> {
     const html = await res.text();
     const $ = cheerio.load(html);
 
-    const og = (prop: string) =>
-      $(`meta[property="og:${prop}"]`).attr("content") ??
-      $(`meta[name="${prop}"]`).attr("content") ??
-      null;
+    const image = resolveUrl(
+      $('meta[property="og:image"]').attr("content") ?? null,
+      url
+    );
 
-    const title =
-      og("title") ??
-      ($("title").first().text().trim() || null);
-
-    const description =
-      og("description") ??
-      $('meta[name="Description"]').attr("content") ??
-      $('meta[property="twitter:description"]').attr("content") ??
-      $('meta[name="twitter:description"]').attr("content") ??
-      null;
-    const image = resolveUrl(og("image"), url);
-
-    // 파비콘: <link rel="icon"> 계열 우선, 없으면 /favicon.ico
-    const faviconHref =
-      $('link[rel="icon"]').attr("href") ??
-      $('link[rel="shortcut icon"]').attr("href") ??
-      $('link[rel="apple-touch-icon"]').attr("href") ??
-      "/favicon.ico";
-    const favicon = resolveUrl(faviconHref, url);
-
-    return { title, description, image, favicon };
+    return { image };
   } catch {
     return empty;
   }
