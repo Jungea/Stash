@@ -401,6 +401,10 @@ export default function FolderSidebar({
         </div>
       )}
 
+      {tree.length === 0 && !creating && (
+        <div className="h-8" />
+      )}
+
       {tree.length > 0 && (
         <ul>
           {tree.map((node) => (
