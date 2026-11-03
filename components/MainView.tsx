@@ -47,6 +47,7 @@ export default function MainView({ showSavedToast }: Props) {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const initialLoadRef = useRef(true);
 
   const LIMIT = 20;
   const scrollContainerRef = useRef<HTMLElement>(null);
@@ -107,14 +108,41 @@ export default function MainView({ showSavedToast }: Props) {
   }, [favoriteOnly]);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((prefs) => {
-        if (prefs.sort) setSort(prefs.sort);
-        if (prefs.pinFavorites !== undefined) setPinFavorites(prefs.pinFavorites);
-      })
-      .catch(() => {})
-      .finally(() => setSettingsReady(true));
+    let cancelled = false;
+
+    async function bootstrap() {
+      setLoading(true);
+      const params = new URLSearchParams({ page: "0", limit: String(LIMIT) });
+      if (searchQuery) params.set("q", searchQuery);
+      if (selectedFolderId) params.set("folderId", selectedFolderId);
+      if (selectedTagId) params.set("tagId", selectedTagId);
+      if (favoriteOnly) params.set("favorite", "1");
+
+      try {
+        const res = await fetch(`/api/bootstrap?${params}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.settings?.sort) setSort(data.settings.sort);
+        if (data.settings?.pinFavorites !== undefined) setPinFavorites(data.settings.pinFavorites);
+        setLinks(Array.isArray(data.links) ? data.links : []);
+        setFolders(Array.isArray(data.folders) ? data.folders : []);
+        setTags(Array.isArray(data.tags) ? data.tags : []);
+        setUnclassifiedCount(data.unclassifiedCount ?? 0);
+        setPage(0);
+        setHasMore(data.hasMore === true);
+      } finally {
+        if (!cancelled) {
+          setSettingsReady(true);
+          setLoading(false);
+        }
+      }
+    }
+
+    bootstrap();
+    return () => { cancelled = true; };
+    // 초기 화면 상태는 localStorage에서 한 번만 읽어 bootstrap한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchLinks = useCallback(async (pageNum = 0, append = false) => {
@@ -139,15 +167,12 @@ export default function MainView({ showSavedToast }: Props) {
 
   useEffect(() => {
     if (!settingsReady) return;
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
+      return;
+    }
     async function init() {
-      setLoading(true);
-      await Promise.all([
-        fetchLinks(0, false),
-        fetch("/api/folders").then((r) => r.json()).then((d) => setFolders(Array.isArray(d) ? d : [])),
-        fetch("/api/tags").then((r) => r.json()).then((d) => setTags(Array.isArray(d) ? d : [])),
-        fetch("/api/links?count=1&folderId=none").then((r) => r.json()).then((d) => setUnclassifiedCount(d?.count ?? 0)),
-      ]);
-      setLoading(false);
+      await fetchLinks(0, false);
     }
     init();
   }, [fetchLinks, settingsReady]);
