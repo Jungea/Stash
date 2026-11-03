@@ -26,6 +26,7 @@ export default function MainView({ showSavedToast }: Props) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [linksLoading, setLinksLoading] = useState(false);
   const [unclassifiedCount, setUnclassifiedCount] = useState<number>(0);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -154,6 +155,7 @@ export default function MainView({ showSavedToast }: Props) {
   }, []);
 
   const fetchLinks = useCallback(async (pageNum = 0, append = false) => {
+    if (!append) setLinksLoading(true);
     const params = new URLSearchParams();
     if (searchQuery) params.set("q", searchQuery);
     if (selectedFolderId) params.set("folderId", selectedFolderId);
@@ -164,13 +166,17 @@ export default function MainView({ showSavedToast }: Props) {
     params.set("page", String(pageNum));
     params.set("limit", String(LIMIT));
 
-    const res = await fetch(`/api/links?${params}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    if (append) setLinks((prev) => [...prev, ...data]);
-    else setLinks(data);
-    setPage(pageNum);
-    setHasMore(data.length === LIMIT);
+    try {
+      const res = await fetch(`/api/links?${params}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (append) setLinks((prev) => [...prev, ...data]);
+      else setLinks(data);
+      setPage(pageNum);
+      setHasMore(data.length === LIMIT);
+    } finally {
+      if (!append) setLinksLoading(false);
+    }
   }, [searchQuery, selectedFolderId, selectedTagId, favoriteOnly, sort, pinFavorites, LIMIT]);
 
   useEffect(() => {
@@ -534,7 +540,13 @@ export default function MainView({ showSavedToast }: Props) {
               )}
 
               {/* 링크 */}
-              {links.length > 0 ? (
+              {linksLoading ? (
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <li key={i}><LinkCardSkeleton /></li>
+                  ))}
+                </ul>
+              ) : links.length > 0 ? (
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {links.map((link) => (
                     <li key={link.id}>
