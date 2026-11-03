@@ -95,6 +95,7 @@ cp .env.local.example .env.local
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (public) 키 |
+| `HEALTH_TOKEN` | `/api/health` 호출용 비밀 토큰 (운영환경 필수) |
 
 ### 4. 실행
 
@@ -155,6 +156,11 @@ node scripts/generate-icons.mjs
 
 ## 예정 / 미구현
 
+- 태그 기능 고도화 (현재 보류)
+  - 현재 구현: 태그 API, 링크 카드의 태그 표시, 사이드바 태그 필터, `link_tags` RLS
+  - 미구현: 화면에서 태그 생성, 링크에 태그 연결/해제, 태그 이름 변경/삭제
+  - 폴더만으로 정리가 충분하므로 당분간 개발하지 않음
+  - 재개 시 `EditLinkModal`에 태그 선택 UI를 추가하고, 태그 관리 UI와 API 입력 검증을 보강할 것
 - 깨진 링크 주기 체크 (Vercel Cron)
 - 브라우저 북마크 가져오기, CSV/JSON 내보내기
 - 링크 열람 시 읽음 자동 처리, 클릭 수 대시보드

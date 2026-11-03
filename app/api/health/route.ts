@@ -1,9 +1,26 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { createClient as createSupabase } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+function tokenMatches(provided: string | null, expected: string | undefined) {
+  if (!provided || !expected) return false;
+  const providedBuffer = Buffer.from(provided);
+  const expectedBuffer = Buffer.from(expected);
+  return providedBuffer.length === expectedBuffer.length && timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
+export async function GET(req: NextRequest) {
+  const expectedToken = process.env.HEALTH_TOKEN;
+  const isAuthorized = expectedToken
+    ? tokenMatches(req.headers.get("x-health-token"), expectedToken)
+    : process.env.NODE_ENV !== "production";
+
+  if (!isAuthorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const startedAt = Date.now();
   const supabase = createSupabase(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
