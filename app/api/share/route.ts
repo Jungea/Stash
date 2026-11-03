@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(link, { status: 201 });
 }
 
-export async function saveLink(
+async function saveLink(
   supabase: Awaited<ReturnType<typeof createClient>>,
   {
     url,
