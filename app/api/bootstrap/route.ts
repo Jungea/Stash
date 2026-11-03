@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getFoldersWithCounts } from "@/lib/folder-data";
+import { sanitizeSearchQuery } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const params = req.nextUrl.searchParams;
-  const q = params.get("q")?.trim();
+  const q = sanitizeSearchQuery(params.get("q"));
   const folderId = params.get("folderId");
   const tagId = params.get("tagId");
   const favorite = params.get("favorite");

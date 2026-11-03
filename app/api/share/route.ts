@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { fetchMetadata, extractUrl } from "@/lib/metadata";
+import { assertHttpUrl } from "@/lib/security";
 
 /** Android Web Share Target — GET /api/share?url=...&text=...&title=... */
 export async function GET(req: NextRequest) {
@@ -28,6 +29,12 @@ export async function POST(req: NextRequest) {
 
   if (!url || typeof url !== "string") {
     return NextResponse.json({ error: "url이 필요합니다." }, { status: 400 });
+  }
+
+  try {
+    assertHttpUrl(url);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "올바른 URL이 아닙니다." }, { status: 400 });
   }
 
   const supabase = await createClient();

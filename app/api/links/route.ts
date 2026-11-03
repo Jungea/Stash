@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeSearchQuery } from "@/lib/security";
 
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
-  const q = params.get("q")?.trim();
+  const q = sanitizeSearchQuery(params.get("q"));
   const folderId = params.get("folderId");
   const tagId = params.get("tagId");
   const favorite = params.get("favorite");

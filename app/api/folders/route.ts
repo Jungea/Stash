@@ -22,6 +22,11 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  if (parentId !== undefined && parentId !== null) {
+    const { data: parent } = await supabase.from("folders").select("id").eq("id", parentId).maybeSingle();
+    if (!parent) return NextResponse.json({ error: "접근할 수 없는 상위 폴더입니다." }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from("folders")
     .insert({ user_id: user.id, name: name.trim(), parent_id: parentId ?? null, color: color ?? null, ...(order !== undefined ? { order } : {}) })

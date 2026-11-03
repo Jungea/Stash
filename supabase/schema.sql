@@ -87,4 +87,14 @@ create policy "link_tags_owner" on link_tags for all
       select 1 from links
       where links.id = link_id and links.user_id = auth.uid()
     )
+  )
+  with check (
+    exists (
+      select 1 from links
+      where links.id = link_id and links.user_id = auth.uid()
+    )
+    and exists (
+      select 1 from tags
+      where tags.id = tag_id and tags.user_id = auth.uid()
+    )
   );

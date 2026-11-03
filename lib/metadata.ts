@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { assertSafeHttpUrl, fetchPublicUrl, readTextLimited } from "@/lib/security";
 
 export interface LinkMetadata {
   image: string | null;
@@ -9,7 +10,9 @@ export async function fetchMetadata(url: string): Promise<LinkMetadata> {
   const empty: LinkMetadata = { image: null };
 
   try {
-    const res = await fetch(url, {
+    // 내부 주소는 저장할 수 있지만, 배포 서버가 해당 주소로 요청하지 않도록 한다.
+    await assertSafeHttpUrl(url);
+    const res = await fetchPublicUrl(url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; Stash/1.0)" },
       signal: AbortSignal.timeout(8000),
     });
@@ -19,13 +22,15 @@ export async function fetchMetadata(url: string): Promise<LinkMetadata> {
     const contentType = res.headers.get("content-type") ?? "";
     if (!contentType.includes("text/html")) return empty;
 
-    const html = await res.text();
+    const html = await readTextLimited(res);
     const $ = cheerio.load(html);
 
     const image = resolveUrl(
       $('meta[property="og:image"]').attr("content") ?? null,
       url
     );
+
+    if (image) await assertSafeHttpUrl(image);
 
     return { image };
   } catch {

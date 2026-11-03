@@ -17,6 +17,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const supabase = await createClient();
+
+  if (parentId !== undefined && parentId !== null) {
+    const { data: parent } = await supabase.from("folders").select("id").eq("id", parentId).maybeSingle();
+    if (!parent) return NextResponse.json({ error: "접근할 수 없는 상위 폴더입니다." }, { status: 400 });
+
+    const { data: folders } = await supabase.from("folders").select("id, parent_id");
+    const parents = new Map((folders ?? []).map((folder) => [folder.id, folder.parent_id]));
+    const visited = new Set<string>();
+    let current: string | null = parentId;
+    while (current) {
+      if (current === id) return NextResponse.json({ error: "하위 폴더를 상위 폴더로 지정할 수 없습니다." }, { status: 400 });
+      if (visited.has(current)) break;
+      visited.add(current);
+      current = parents.get(current) ?? null;
+    }
+  }
+
   const { data, error } = await supabase
     .from("folders")
     .update(updates)
