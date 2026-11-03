@@ -51,6 +51,36 @@ create index idx_folders_parent on folders(parent_id);
 create index idx_folders_user   on folders(user_id);
 create index idx_tags_user      on tags(user_id);
 
+-- 폴더별 링크 수를 DB에서 계산한다. 부모 폴더에는 하위 폴더 링크도 포함한다.
+create or replace function get_folder_link_counts()
+returns table (folder_id uuid, link_count bigint)
+language sql
+stable
+security invoker
+as $$
+  with recursive folder_tree as (
+    select f.id as root_id, f.id as folder_id
+    from folders f
+    where f.user_id = auth.uid()
+
+    union all
+
+    select tree.root_id, child.id
+    from folder_tree tree
+    join folders child on child.parent_id = tree.folder_id
+    where child.user_id = auth.uid()
+  )
+  select folders.id as folder_id, count(links.id)::bigint as link_count
+  from folders
+  left join folder_tree tree on tree.root_id = folders.id
+  left join links on links.folder_id = tree.folder_id
+    and links.user_id = auth.uid()
+  where folders.user_id = auth.uid()
+  group by folders.id;
+$$;
+
+grant execute on function get_folder_link_counts() to authenticated;
+
 -- updated_at 자동 갱신 트리거
 create or replace function set_updated_at()
 returns trigger language plpgsql as $$

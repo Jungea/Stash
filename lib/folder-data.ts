@@ -3,19 +3,23 @@ import { createClient } from "@/lib/supabase/server";
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export async function getFoldersWithCounts(supabase: SupabaseServerClient) {
-  const { data: folders, error: foldersError } = await supabase
+  const foldersQuery = supabase
     .from("folders")
     .select("*")
     .order("order", { ascending: true })
     .order("created_at", { ascending: true });
 
-  if (foldersError) throw foldersError;
-
-  const { data: links, error: linksError } = await supabase
+  const linksQuery = supabase
     .from("links")
     .select("folder_id")
     .not("folder_id", "is", null);
 
+  const [foldersResult, linksResult] = await Promise.all([foldersQuery, linksQuery]);
+
+  const { data: folders, error: foldersError } = foldersResult;
+  const { data: links, error: linksError } = linksResult;
+
+  if (foldersError) throw foldersError;
   if (linksError) throw linksError;
 
   const linkCounts = new Map<string, number>();

@@ -184,7 +184,7 @@ async function handleCreateChild() {
             </span>
           )}
 
-          <span className="text-xs text-white/30 shrink-0">{node.links?.[0]?.count ?? 0}</span>
+          <span className="text-xs text-white/30 shrink-0">{node.links ? node.links[0]?.count ?? 0 : "…"}</span>
         </div>
 
         {/* 수정/삭제 메뉴 */}

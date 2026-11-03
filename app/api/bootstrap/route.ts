@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getFoldersWithCounts } from "@/lib/folder-data";
 import { sanitizeSearchQuery } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -59,21 +58,27 @@ export async function GET(req: NextRequest) {
 
   const countQuery = supabase.from("links").select("*", { count: "exact", head: true });
   const unclassifiedQuery = countQuery.is("folder_id", null);
+  const foldersQuery = supabase
+    .from("folders")
+    .select("*")
+    .order("order", { ascending: true })
+    .order("created_at", { ascending: true });
 
   const [linksResult, foldersResult, tagsResult, unclassifiedResult] = await Promise.all([
     linksQuery,
-    getFoldersWithCounts(supabase),
+    foldersQuery,
     supabase.from("tags").select("*, count:link_tags(count)").order("name", { ascending: true }),
     unclassifiedQuery,
   ]);
 
   if (linksResult.error) return NextResponse.json({ error: linksResult.error.message }, { status: 500 });
+  if (foldersResult.error) return NextResponse.json({ error: foldersResult.error.message }, { status: 500 });
   if (tagsResult.error) return NextResponse.json({ error: tagsResult.error.message }, { status: 500 });
   if (unclassifiedResult.error) return NextResponse.json({ error: unclassifiedResult.error.message }, { status: 500 });
 
   return NextResponse.json({
     links: linksResult.data ?? [],
-    folders: foldersResult,
+    folders: foldersResult.data ?? [],
     tags: tagsResult.data ?? [],
     unclassifiedCount: unclassifiedResult.count ?? 0,
     settings: preferences,

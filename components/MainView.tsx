@@ -131,6 +131,14 @@ export default function MainView({ showSavedToast }: Props) {
         setUnclassifiedCount(data.unclassifiedCount ?? 0);
         setPage(0);
         setHasMore(data.hasMore === true);
+
+        // 폴더별 링크 수는 느린 집계 쿼리라 첫 화면 표시 후 별도로 채운다.
+        fetch("/api/folders")
+          .then((foldersRes) => foldersRes.json())
+          .then((foldersData) => {
+            if (!cancelled && Array.isArray(foldersData)) setFolders(foldersData);
+          })
+          .catch(() => {});
       } finally {
         if (!cancelled) {
           setSettingsReady(true);
@@ -518,7 +526,7 @@ export default function MainView({ showSavedToast }: Props) {
                       {/* 텍스트 */}
                       <div className="absolute bottom-0 left-0 right-0 p-2 flex items-end justify-between gap-1">
                         <span className="text-[10px] text-white break-words leading-tight text-left">{folder.name}</span>
-                        <span className="text-[10px] text-white/40 shrink-0">{folder.links?.[0]?.count ?? 0}</span>
+                        <span className="text-[10px] text-white/40 shrink-0">{folder.links ? folder.links[0]?.count ?? 0 : "…"}</span>
                       </div>
                     </button>
                   ))}
@@ -773,7 +781,7 @@ export default function MainView({ showSavedToast }: Props) {
                   </button>
                   <Icon className="w-5 h-5 shrink-0" style={{ color: folder.color ?? "#9ca3af" }} />
                   <span className={`flex-1 text-sm truncate ${depth === 0 ? "text-white" : depth === 1 ? "text-white/70" : "text-white/50"}`}>{folder.name}</span>
-                  <span className="text-xs text-white/30">{folder.links?.[0]?.count ?? 0}</span>
+                  <span className="text-xs text-white/30">{folder.links ? folder.links[0]?.count ?? 0 : "…"}</span>
                 </div>
               </div>
             );
